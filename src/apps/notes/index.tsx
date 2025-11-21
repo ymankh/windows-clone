@@ -11,35 +11,77 @@ export const NotesApp: DesktopApp = {
     {
       label: "File",
       items: [
-        { label: "New Note", shortcut: "Ctrl+N" },
-        { label: "Open...", shortcut: "Ctrl+O" },
-        { type: "separator" },
-        { label: "Save", shortcut: "Ctrl+S" },
-        { label: "Save As..." },
+        {
+          label: "New Note",
+          shortcut: "Ctrl+N",
+          onSelect: () =>
+            window.dispatchEvent(
+              new CustomEvent("notes-editor-command", { detail: { action: "clear" } })
+            ),
+        },
+        {
+          label: "Open (md/json)",
+          onSelect: () => {
+            document.getElementById("notes-md-input")?.click();
+          },
+        },
+        {
+          label: "Save as Markdown",
+          onSelect: () =>
+            window.dispatchEvent(
+              new CustomEvent("notes-file-command", { detail: { action: "save-md" } })
+            ),
+        },
       ],
     },
     {
       label: "Edit",
       items: [
-        { label: "Undo", shortcut: "Ctrl+Z" },
-        { label: "Redo", shortcut: "Ctrl+Y" },
-        { type: "separator" },
-        { label: "Find", shortcut: "Ctrl+F" },
+        {
+          label: "Undo",
+          shortcut: "Ctrl+Z",
+          onSelect: () =>
+            window.dispatchEvent(
+              new CustomEvent("notes-editor-command", { detail: { action: "undo" } })
+            ),
+        },
+        {
+          label: "Redo",
+          shortcut: "Ctrl+Y",
+          onSelect: () =>
+            window.dispatchEvent(
+              new CustomEvent("notes-editor-command", { detail: { action: "redo" } })
+            ),
+        },
       ],
     },
     {
-      label: "View",
+      label: "Format",
       items: [
         {
-          type: "submenu",
-          label: "Zoom",
-          items: [
-            { label: "Zoom In", shortcut: "Ctrl++" },
-            { label: "Zoom Out", shortcut: "Ctrl+-" },
-            { label: "Reset Zoom", shortcut: "Ctrl+0" },
-          ],
+          label: "Bold",
+          shortcut: "Ctrl+B",
+          onSelect: () =>
+            window.dispatchEvent(
+              new CustomEvent("notes-editor-command", { detail: { action: "bold" } })
+            ),
         },
-        { label: "Toggle Sidebar" },
+        {
+          label: "Italic",
+          shortcut: "Ctrl+I",
+          onSelect: () =>
+            window.dispatchEvent(
+              new CustomEvent("notes-editor-command", { detail: { action: "italic" } })
+            ),
+        },
+        {
+          label: "Underline",
+          shortcut: "Ctrl+U",
+          onSelect: () =>
+            window.dispatchEvent(
+              new CustomEvent("notes-editor-command", { detail: { action: "underline" } })
+            ),
+        },
       ],
     },
   ],

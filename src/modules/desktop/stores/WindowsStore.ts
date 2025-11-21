@@ -2,23 +2,51 @@ import type { ReactNode } from "react";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 
+export type WindowMenuItem =
+  | {
+      type?: "item";
+      label: string;
+      shortcut?: string;
+      disabled?: boolean;
+      onSelect?: () => void;
+    }
+  | { type: "separator" }
+  | { type: "submenu"; label: string; items: WindowMenuItem[]; disabled?: boolean };
+
+export interface WindowMenu {
+  label: string;
+  items: WindowMenuItem[];
+}
+
 interface Window {
   id: string;
   title: string;
-  isOpen: boolean;
+  isMinimized: boolean;
   zIndex: number;
   component: ReactNode;
+  x: number;
+  y: number;
+  menubar?: WindowMenu[];
 }
+
+type OpenWindowPayload = {
+  id: string;
+  title: string;
+  component: ReactNode;
+  x?: number;
+  y?: number;
+  zIndex?: number;
+  menubar?: WindowMenu[];
+};
 
 interface WindowsManagerStore {
   windows: Window[];
-  openWindow: (
-    window: Omit<Window, "isOpen" | "zIndex"> & Partial<Pick<Window, "zIndex">>
-  ) => void;
+  openWindow: (window: OpenWindowPayload) => void;
   closeWindow: (id: string) => void;
   toggleWindow: (id: string) => void;
   focusWindow: (id: string) => void;
   removeWindow: (id: string) => void;
+  updateWindowPosition: (id: string, x: number, y: number) => void;
 }
 
 const getNextZIndex = (windows: Window[]) =>
@@ -29,23 +57,30 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
     windows: [],
     openWindow: (win) =>
       set((state: WindowsManagerStore) => {
-        const existingWindow = state.windows.find(
-          ({ id }: Window) => id === win.id
-        );
+        const existingWindow = state.windows.find(({ id }) => id === win.id);
         const zIndex = win.zIndex ?? getNextZIndex(state.windows);
+        const offset = state.windows.length * 20;
+        const fallbackX = 80 + offset;
+        const fallbackY = 80 + offset;
 
         if (existingWindow) {
           existingWindow.title = win.title;
           existingWindow.component = win.component;
-          existingWindow.isOpen = true;
+          existingWindow.isMinimized = false;
           existingWindow.zIndex = zIndex;
+          if (win.x !== undefined) existingWindow.x = win.x;
+          if (win.y !== undefined) existingWindow.y = win.y;
+          if (win.menubar !== undefined) existingWindow.menubar = win.menubar;
           return;
         }
 
         state.windows.push({
           ...win,
-          isOpen: true,
+          isMinimized: false,
           zIndex,
+          x: win.x ?? fallbackX,
+          y: win.y ?? fallbackY,
+          menubar: win.menubar,
         });
       }),
     closeWindow: (id) =>
@@ -54,7 +89,7 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           ({ id: windowId }: Window) => windowId === id
         );
         if (!window) return;
-        window.isOpen = false;
+        window.isMinimized = true;
       }),
     toggleWindow: (id) =>
       set((state: WindowsManagerStore) => {
@@ -63,25 +98,35 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
         );
         if (!window) return;
 
-        const willOpen = !window.isOpen;
-        window.isOpen = willOpen;
-        if (willOpen) {
+        const willMinimize = !window.isMinimized;
+        window.isMinimized = willMinimize;
+        if (!willMinimize) {
           window.zIndex = getNextZIndex(state.windows);
         }
       }),
     focusWindow: (id) =>
       set((state: WindowsManagerStore) => {
         const window = state.windows.find(
-          ({ id: windowId }: Window) => windowId === id
+          ({ id: windowId }) => windowId === id
         );
         if (!window) return;
+        window.isMinimized = false;
         window.zIndex = getNextZIndex(state.windows);
       }),
     removeWindow: (id) =>
       set((state: WindowsManagerStore) => {
         state.windows = state.windows.filter(
-          ({ id: windowId }: Window) => windowId !== id
+          ({ id: windowId }) => windowId !== id
         );
+      }),
+    updateWindowPosition: (id, x, y) =>
+      set((state: WindowsManagerStore) => {
+        const window = state.windows.find(
+          ({ id: windowId }: Window) => windowId === id
+        );
+        if (!window) return;
+        window.x = x;
+        window.y = y;
       }),
   }))
 );

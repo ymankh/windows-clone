@@ -1,4 +1,4 @@
-import Desktop from "./modules/desktop/Desktop";
+import Desktop from "./desktop/Desktop";
 import { desktopApps } from "./apps";
 
 function App() {

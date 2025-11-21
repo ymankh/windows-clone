@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import type { DesktopApp } from "../../../apps";
+import type { DesktopApp } from "../../apps";
 import useWindowsManagerStore from "../stores/WindowsStore";
 
 type DesktopIconProps = {

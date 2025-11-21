@@ -1,4 +1,4 @@
-import type { DesktopApp } from "../../apps";
+import type { DesktopApp } from "../apps";
 import DesktopIcon from "./components/DesktopIcon";
 import Window from "./components/windows/Window";
 import Taskbar from "./components/Taskbar";

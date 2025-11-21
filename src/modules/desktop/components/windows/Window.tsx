@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Minus, Square, X } from "lucide-react";
 import useWindowsManagerStore from "../../stores/WindowsStore";
 import WindowMenubar from "./WindowMenubar";
@@ -22,38 +22,51 @@ const Window = ({ id, title, children }: WindowProps) => {
     (state) => state.updateWindowPosition
   );
 
+  const windowRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef({
     dragging: false,
     startX: 0,
     startY: 0,
     originX: 0,
     originY: 0,
+    maxX: Number.POSITIVE_INFINITY,
+    maxY: Number.POSITIVE_INFINITY,
   });
 
   const handleFocus = () => focusWindow(id);
   const stop: React.MouseEventHandler = (event: MouseEvent) =>
     event.stopPropagation();
 
-  const handlePointerMove = (event: PointerEvent) => {
-    if (!dragState.current.dragging) return;
-    event.preventDefault();
-    const deltaX = event.clientX - dragState.current.startX;
-    const deltaY = event.clientY - dragState.current.startY;
-    updateWindowPosition(id, dragState.current.originX + deltaX, dragState.current.originY + deltaY);
-  };
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      if (!dragState.current.dragging) return;
+      event.preventDefault();
+      const deltaX = event.clientX - dragState.current.startX;
+      const deltaY = event.clientY - dragState.current.startY;
+      const nextX = Math.min(
+        Math.max(0, dragState.current.originX + deltaX),
+        dragState.current.maxX
+      );
+      const nextY = Math.min(
+        Math.max(0, dragState.current.originY + deltaY),
+        dragState.current.maxY
+      );
+      updateWindowPosition(id, nextX, nextY);
+    },
+    [id, updateWindowPosition]
+  );
 
-  const handlePointerUp = () => {
+  const handlePointerUp = useCallback(() => {
     dragState.current.dragging = false;
     window.removeEventListener("pointermove", handlePointerMove);
-    window.removeEventListener("pointerup", handlePointerUp);
-  };
+  }, [handlePointerMove]);
 
   useEffect(
     () => () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     },
-    []
+    [handlePointerMove, handlePointerUp]
   );
 
   if (!windowData) return null;
@@ -62,15 +75,22 @@ const Window = ({ id, title, children }: WindowProps) => {
     if (event.button !== 0) return;
     handleFocus();
     event.preventDefault();
+    const viewportWidth =
+      window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight || 0;
+    const { width = 0, height = 0 } = windowRef.current?.getBoundingClientRect() ?? {};
     dragState.current = {
       dragging: true,
       startX: event.clientX,
       startY: event.clientY,
       originX: windowData.x,
       originY: windowData.y,
+      maxX: Math.max(0, viewportWidth - width),
+      maxY: Math.max(0, viewportHeight - height),
     };
     window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointerup", handlePointerUp, { once: true });
   };
 
   return (
@@ -78,6 +98,7 @@ const Window = ({ id, title, children }: WindowProps) => {
       className="absolute w-[420px] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
       style={{ zIndex: windowData.zIndex, left: windowData.x, top: windowData.y }}
       onMouseDown={handleFocus}
+      ref={windowRef}
     >
       <div
         className="flex cursor-move items-center justify-between bg-muted px-3 py-2 text-sm font-semibold select-none"

@@ -29,6 +29,8 @@ interface Window {
   component: ReactNode;
   x: number;
   y: number;
+  width: number;
+  height: number;
   menubar?: WindowMenu[];
 }
 
@@ -39,6 +41,8 @@ type OpenWindowPayload = {
   component: ReactNode;
   x?: number;
   y?: number;
+  width?: number;
+  height?: number;
   zIndex?: number;
   menubar?: WindowMenu[];
 };
@@ -51,6 +55,10 @@ interface WindowsManagerStore {
   focusWindow: (id: string) => void;
   removeWindow: (id: string) => void;
   updateWindowPosition: (id: string, x: number, y: number) => void;
+  updateWindowBounds: (
+    id: string,
+    bounds: { x?: number; y?: number; width?: number; height?: number }
+  ) => void;
 }
 
 const getNextZIndex = (windows: Window[]) =>
@@ -66,6 +74,8 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
         const offset = state.windows.length * 20;
         const fallbackX = 80 + offset;
         const fallbackY = 80 + offset;
+        const fallbackWidth = win.width ?? 520;
+        const fallbackHeight = win.height ?? 360;
 
         if (existingWindow) {
           existingWindow.title = win.title;
@@ -75,6 +85,8 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           existingWindow.zIndex = zIndex;
           if (win.x !== undefined) existingWindow.x = win.x;
           if (win.y !== undefined) existingWindow.y = win.y;
+          if (win.width !== undefined) existingWindow.width = win.width;
+          if (win.height !== undefined) existingWindow.height = win.height;
           if (win.menubar !== undefined) existingWindow.menubar = win.menubar;
           return;
         }
@@ -86,6 +98,8 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           icon: win.icon,
           x: win.x ?? fallbackX,
           y: win.y ?? fallbackY,
+          width: fallbackWidth,
+          height: fallbackHeight,
           menubar: win.menubar,
         });
       }),
@@ -133,6 +147,17 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
         if (!window) return;
         window.x = x;
         window.y = y;
+      }),
+    updateWindowBounds: (id, bounds) =>
+      set((state: WindowsManagerStore) => {
+        const window = state.windows.find(
+          ({ id: windowId }: Window) => windowId === id
+        );
+        if (!window) return;
+        if (bounds.x !== undefined) window.x = bounds.x;
+        if (bounds.y !== undefined) window.y = bounds.y;
+        if (bounds.width !== undefined) window.width = bounds.width;
+        if (bounds.height !== undefined) window.height = bounds.height;
       }),
   }))
 );

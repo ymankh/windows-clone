@@ -22,6 +22,9 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   const updateWindowPosition = useWindowsManagerStore(
     (state) => state.updateWindowPosition
   );
+  const updateWindowBounds = useWindowsManagerStore(
+    (state) => state.updateWindowBounds
+  );
 
   const windowRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef({
@@ -32,6 +35,17 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     originY: 0,
     maxX: Number.POSITIVE_INFINITY,
     maxY: Number.POSITIVE_INFINITY,
+  });
+  const resizeState = useRef({
+    resizing: false,
+    edgeX: "right" as "left" | "right",
+    edgeY: "bottom" as "top" | "bottom",
+    startX: 0,
+    startY: 0,
+    startWidth: 0,
+    startHeight: 0,
+    startPosX: 0,
+    startPosY: 0,
   });
 
   const handleFocus = () => focusWindow(id);
@@ -71,6 +85,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   );
 
   if (!windowData) return null;
+  const minWidth = 320;
+  const minHeight = 220;
 
   const startDrag: React.PointerEventHandler<HTMLDivElement> = (event) => {
     if (event.button !== 0) return;
@@ -80,7 +96,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
       window.innerWidth || document.documentElement.clientWidth || 0;
     const viewportHeight =
       window.innerHeight || document.documentElement.clientHeight || 0;
-    const { width = 0, height = 0 } = windowRef.current?.getBoundingClientRect() ?? {};
+    const width = windowData.width;
+    const height = windowData.height;
     dragState.current = {
       dragging: true,
       startX: event.clientX,
@@ -94,10 +111,116 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     window.addEventListener("pointerup", handlePointerUp, { once: true });
   };
 
+  const handleResizeMove = useCallback(
+    (event: PointerEvent) => {
+      if (!resizeState.current.resizing) return;
+      event.preventDefault();
+      const viewportWidth =
+        window.innerWidth || document.documentElement.clientWidth || 0;
+      const viewportHeight =
+        window.innerHeight || document.documentElement.clientHeight || 0;
+
+      const deltaX = event.clientX - resizeState.current.startX;
+      const deltaY = event.clientY - resizeState.current.startY;
+
+      let newX = resizeState.current.startPosX;
+      let newY = resizeState.current.startPosY;
+      let newWidth =
+        resizeState.current.edgeX === "right"
+          ? resizeState.current.startWidth + deltaX
+          : resizeState.current.startWidth - deltaX;
+      let newHeight =
+        resizeState.current.edgeY === "bottom"
+          ? resizeState.current.startHeight + deltaY
+          : resizeState.current.startHeight - deltaY;
+
+      if (resizeState.current.edgeX === "left") {
+        const maxLeftShift =
+          resizeState.current.startPosX + resizeState.current.startWidth - minWidth;
+        const clampedShift = Math.max(
+          Math.min(deltaX, maxLeftShift),
+          -resizeState.current.startPosX
+        );
+        newX = resizeState.current.startPosX + clampedShift;
+        newWidth =
+          resizeState.current.startWidth +
+          (resizeState.current.startPosX - newX);
+      } else {
+        const maxWidth = viewportWidth - resizeState.current.startPosX;
+        newWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
+      }
+
+      if (resizeState.current.edgeY === "top") {
+        const maxTopShift =
+          resizeState.current.startPosY + resizeState.current.startHeight - minHeight;
+        const clampedShift = Math.max(
+          Math.min(deltaY, maxTopShift),
+          -resizeState.current.startPosY
+        );
+        newY = resizeState.current.startPosY + clampedShift;
+        newHeight =
+          resizeState.current.startHeight +
+          (resizeState.current.startPosY - newY);
+      } else {
+        const maxHeight = viewportHeight - resizeState.current.startPosY;
+        newHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
+      }
+
+      updateWindowBounds(id, {
+        x: Math.round(newX),
+        y: Math.round(newY),
+        width: Math.round(newWidth),
+        height: Math.round(newHeight),
+      });
+    },
+    [id, minHeight, minWidth, updateWindowBounds]
+  );
+
+  const handleResizeUp = useCallback(() => {
+    resizeState.current.resizing = false;
+    window.removeEventListener("pointermove", handleResizeMove);
+  }, [handleResizeMove]);
+
+  useEffect(
+    () => () => {
+      window.removeEventListener("pointermove", handleResizeMove);
+      window.removeEventListener("pointerup", handleResizeUp);
+    },
+    [handleResizeMove, handleResizeUp]
+  );
+
+  const startResize = (
+    edgeX: "left" | "right",
+    edgeY: "top" | "bottom"
+  ): React.PointerEventHandler<HTMLDivElement> => (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    handleFocus();
+    resizeState.current = {
+      resizing: true,
+      edgeX,
+      edgeY,
+      startX: event.clientX,
+      startY: event.clientY,
+      startWidth: windowData.width,
+      startHeight: windowData.height,
+      startPosX: windowData.x,
+      startPosY: windowData.y,
+    };
+    window.addEventListener("pointermove", handleResizeMove);
+    window.addEventListener("pointerup", handleResizeUp, { once: true });
+  };
+
   return (
     <div
-      className="absolute w-[420px] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
-      style={{ zIndex: windowData.zIndex, left: windowData.x, top: windowData.y }}
+      className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
+      style={{
+        zIndex: windowData.zIndex,
+        left: windowData.x,
+        top: windowData.y,
+        width: windowData.width,
+        height: windowData.height,
+      }}
       onMouseDown={handleFocus}
       ref={windowRef}
     >
@@ -156,7 +279,28 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         <WindowMenubar menu={windowData.menubar} />
       ) : null}
 
-      {!windowData.isMinimized && <div className="p-4">{children}</div>}
+      {!windowData.isMinimized && (
+        <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
+      )}
+
+      <div className="pointer-events-none absolute inset-0">
+        <div
+          className="pointer-events-auto absolute left-0 top-0 h-3 w-3 cursor-nwse-resize"
+          onPointerDown={startResize("left", "top")}
+        />
+        <div
+          className="pointer-events-auto absolute right-0 top-0 h-3 w-3 cursor-nesw-resize"
+          onPointerDown={startResize("right", "top")}
+        />
+        <div
+          className="pointer-events-auto absolute left-0 bottom-0 h-3 w-3 cursor-nesw-resize"
+          onPointerDown={startResize("left", "bottom")}
+        />
+        <div
+          className="pointer-events-auto absolute right-0 bottom-0 h-3 w-3 cursor-nwse-resize"
+          onPointerDown={startResize("right", "bottom")}
+        />
+      </div>
     </div>
   );
 };

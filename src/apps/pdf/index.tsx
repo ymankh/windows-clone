@@ -6,7 +6,7 @@ export const PdfApp: DesktopApp = {
   id: "pdf",
   title: "PDF Viewer",
   icon: FileDown,
-  Component: PdfComponent,
+  Component: () => <PdfComponent />,
   menubar: [
     {
       label: "File",
@@ -15,6 +15,35 @@ export const PdfApp: DesktopApp = {
           label: "Download",
           onSelect: () => {
             window.open(PDF_FILE_URL, "_blank");
+          },
+        },
+      ],
+    },
+    {
+      label: "View",
+      items: [
+        {
+          label: "Zoom In",
+          onSelect: () => {
+            window.dispatchEvent(
+              new CustomEvent("pdf-zoom", { detail: { action: "in" } })
+            );
+          },
+        },
+        {
+          label: "Zoom Out",
+          onSelect: () => {
+            window.dispatchEvent(
+              new CustomEvent("pdf-zoom", { detail: { action: "out" } })
+            );
+          },
+        },
+        {
+          label: "Reset Zoom",
+          onSelect: () => {
+            window.dispatchEvent(
+              new CustomEvent("pdf-zoom", { detail: { action: "reset" } })
+            );
           },
         },
       ],

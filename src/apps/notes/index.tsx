@@ -1,18 +1,12 @@
 import { FileText } from "lucide-react";
 import type { DesktopApp } from "../types";
-
-const NotesContent = () => (
-  <div className="space-y-2 text-sm leading-relaxed">
-    <p>Welcome to your desktop mock. This is a sample Notes window.</p>
-    <p>Click the top bar buttons to minimize, restore, or close.</p>
-  </div>
-);
+import NotesComponent from "./Component";
 
 export const NotesApp: DesktopApp = {
   id: "notes",
   title: "Notes",
   icon: FileText,
-  Component: NotesContent,
+  Component: NotesComponent,
   menubar: [
     {
       label: "File",
@@ -50,4 +44,3 @@ export const NotesApp: DesktopApp = {
     },
   ],
 };
-

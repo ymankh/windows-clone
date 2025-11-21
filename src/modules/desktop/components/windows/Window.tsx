@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { ComponentType, MouseEvent, ReactNode, SVGProps } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { Minus, Square, X } from "lucide-react";
 import useWindowsManagerStore from "../../stores/WindowsStore";
@@ -7,10 +7,11 @@ import WindowMenubar from "./WindowMenubar";
 type WindowProps = {
   id: string;
   title: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   children: ReactNode;
 };
 
-const Window = ({ id, title, children }: WindowProps) => {
+const Window = ({ id, title, icon, children }: WindowProps) => {
   const windowData = useWindowsManagerStore((state) =>
     state.windows.find((win) => win.id === id)
   );
@@ -104,7 +105,16 @@ const Window = ({ id, title, children }: WindowProps) => {
         className="flex cursor-move items-center justify-between bg-muted px-3 py-2 text-sm font-semibold select-none"
         onPointerDown={startDrag}
       >
-        <span className="truncate">{windowData.title || title}</span>
+        <span className="flex items-center gap-2 truncate">
+          <span className="text-muted-foreground">
+            {(() => {
+              const IconComponent =
+                windowData.icon ?? icon;
+              return <IconComponent className="h-4 w-4" />;
+            })()}
+          </span>
+          <span className="truncate">{windowData.title || title}</span>
+        </span>
         <div className="flex items-center gap-2">
           <button
             type="button"

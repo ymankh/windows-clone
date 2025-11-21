@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+
+type WindowIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 export type WindowMenuItem =
   | {
@@ -23,6 +25,7 @@ interface Window {
   title: string;
   isMinimized: boolean;
   zIndex: number;
+  icon: WindowIcon;
   component: ReactNode;
   x: number;
   y: number;
@@ -32,6 +35,7 @@ interface Window {
 type OpenWindowPayload = {
   id: string;
   title: string;
+  icon: WindowIcon;
   component: ReactNode;
   x?: number;
   y?: number;
@@ -65,6 +69,7 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
 
         if (existingWindow) {
           existingWindow.title = win.title;
+          existingWindow.icon = win.icon;
           existingWindow.component = win.component;
           existingWindow.isMinimized = false;
           existingWindow.zIndex = zIndex;
@@ -78,6 +83,7 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           ...win,
           isMinimized: false,
           zIndex,
+          icon: win.icon,
           x: win.x ?? fallbackX,
           y: win.y ?? fallbackY,
           menubar: win.menubar,

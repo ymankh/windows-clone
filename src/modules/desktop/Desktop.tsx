@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, SVGProps, ComponentType } from "react";
 import { FileText, Folder, Image, Terminal } from "lucide-react";
 import Window from "./components/windows/Window";
 import type { WindowMenu } from "./stores/WindowsStore";
@@ -7,7 +7,7 @@ import useWindowsManagerStore from "./stores/WindowsStore";
 type AppIcon = {
   id: string;
   title: string;
-  icon: ReactNode;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   component: ReactNode;
   menubar?: WindowMenu[];
 };
@@ -16,7 +16,7 @@ const apps: AppIcon[] = [
   {
     id: "notes",
     title: "Notes",
-    icon: <FileText className="h-8 w-8" />,
+    icon: FileText,
     component: (
       <div className="space-y-2 text-sm leading-relaxed">
         <p>Welcome to your desktop mock. This is a sample Notes window.</p>
@@ -63,7 +63,7 @@ const apps: AppIcon[] = [
   {
     id: "photos",
     title: "Photos",
-    icon: <Image className="h-8 w-8" />,
+    icon: Image,
     component: (
       <div className="text-sm">
         <p>A placeholder Photos app preview.</p>
@@ -73,7 +73,7 @@ const apps: AppIcon[] = [
   {
     id: "files",
     title: "Files",
-    icon: <Folder className="h-8 w-8" />,
+    icon: Folder,
     component: (
       <div className="text-sm">
         <ul className="list-disc space-y-1 pl-4">
@@ -87,7 +87,7 @@ const apps: AppIcon[] = [
   {
     id: "terminal",
     title: "Terminal",
-    icon: <Terminal className="h-8 w-8" />,
+    icon: Terminal,
     component: (
       <div className="font-mono text-sm">
         <p>user@pc:~$ echo &quot;Hello World&quot;</p>
@@ -113,13 +113,14 @@ const Desktop = () => {
               openWindow({
                 id: app.id,
                 title: app.title,
+                icon: app.icon,
                 component: app.component,
                 menubar: app.menubar,
               })
             }
           >
             <div className="flex h-16 w-16 items-center justify-center rounded-md bg-white/5 shadow-sm">
-              {app.icon}
+              <app.icon className="h-8 w-8" />
             </div>
             <span className="text-center leading-tight">{app.title}</span>
           </button>
@@ -127,7 +128,7 @@ const Desktop = () => {
       </div>
 
       {windows.map((win) => (
-        <Window key={win.id} id={win.id} title={win.title}>
+        <Window key={win.id} id={win.id} title={win.title} icon={win.icon}>
           {win.component}
         </Window>
       ))}

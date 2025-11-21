@@ -1,9 +1,10 @@
 import Desktop from "./modules/desktop/Desktop";
+import { desktopApps } from "./apps";
 
 function App() {
   return (
     <>
-      <Desktop />
+      <Desktop apps={desktopApps} />
     </>
   );
 }

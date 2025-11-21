@@ -1,6 +1,7 @@
 import type { ReactNode, SVGProps, ComponentType } from "react";
 import { FileText, Folder, Image, Terminal } from "lucide-react";
 import Window from "./components/windows/Window";
+import Taskbar from "./components/Taskbar";
 import type { WindowMenu } from "./stores/WindowsStore";
 import useWindowsManagerStore from "./stores/WindowsStore";
 
@@ -127,11 +128,15 @@ const Desktop = () => {
         ))}
       </div>
 
-      {windows.map((win) => (
-        <Window key={win.id} id={win.id} title={win.title} icon={win.icon}>
-          {win.component}
-        </Window>
-      ))}
+      {windows
+        .filter((win) => !win.isMinimized)
+        .map((win) => (
+          <Window key={win.id} id={win.id} title={win.title} icon={win.icon}>
+            {win.component}
+          </Window>
+        ))}
+
+      <Taskbar />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { Image } from "lucide-react";
-import type { DesktopApp } from "./types";
+import type { DesktopApp } from "../types";
 
 const PhotosContent = () => (
   <div className="text-sm">

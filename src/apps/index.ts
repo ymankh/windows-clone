@@ -1,7 +1,7 @@
-import { FilesApp } from "./FilesApp";
-import { NotesApp } from "./NotesApp";
-import { PhotosApp } from "./PhotosApp";
-import { TerminalApp } from "./TerminalApp";
+import { FilesApp } from "./files";
+import { NotesApp } from "./notes";
+import { PhotosApp } from "./photos";
+import { TerminalApp } from "./terminal";
 
 export const desktopApps = [NotesApp, PhotosApp, FilesApp, TerminalApp];
 

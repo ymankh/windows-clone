@@ -1,5 +1,5 @@
 import { Folder } from "lucide-react";
-import type { DesktopApp } from "./types";
+import type { DesktopApp } from "../types";
 
 const FilesContent = () => (
   <div className="text-sm">

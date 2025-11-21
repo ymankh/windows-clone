@@ -1,5 +1,5 @@
 import { FileText } from "lucide-react";
-import type { DesktopApp } from "./types";
+import type { DesktopApp } from "../types";
 
 const NotesContent = () => (
   <div className="space-y-2 text-sm leading-relaxed">

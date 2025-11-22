@@ -5,6 +5,7 @@ import Taskbar from "./components/Taskbar";
 import useWindowsManagerStore from "./stores/WindowsStore";
 import DesktopContextMenu from "./components/DesktopContextMenu";
 import { useState } from "react";
+import { AnimatePresence } from "motion/react";
 
 type DesktopProps = {
   apps: DesktopApp[];
@@ -24,13 +25,15 @@ const Desktop = ({ apps }: DesktopProps) => {
         </div>
       </DesktopContextMenu>
 
-      {windows
-        .filter((win) => !win.isMinimized)
-        .map((win) => (
-          <Window key={win.id} id={win.id} title={win.title} icon={win.icon}>
-            {win.component}
-          </Window>
-        ))}
+      <AnimatePresence>
+        {windows.map((win) =>
+          win.isMinimized ? null : (
+            <Window key={win.id} id={win.id} title={win.title} icon={win.icon}>
+              {win.component}
+            </Window>
+          )
+        )}
+      </AnimatePresence>
 
       <Taskbar />
     </div>

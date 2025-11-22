@@ -1,6 +1,7 @@
 import type { ComponentType, MouseEvent, ReactNode, SVGProps } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, Minus, Square, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import useWindowsManagerStore from "../../stores/WindowsStore";
 import WindowMenubar from "./WindowMenubar";
 
@@ -25,7 +26,10 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     (state) => state.updateWindowBounds
   );
   const [isMaximized, setIsMaximized] = useState(false);
-  const previousBoundsRef = useRef<{ x: number; y: number; width: number; height: number }>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const previousBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(
+    null
+  );
 
   const windowRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef({
@@ -253,99 +257,123 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     return () => window.removeEventListener("resize", handleResize);
   }, [applyMaximizeBounds, isMaximized]);
 
-  if (!windowData) return null;
+  if (!windowData && !isClosing) return null;
 
   return (
-    <div
-      className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
-      style={{
-        zIndex: windowData.zIndex,
-        left: windowData.x,
-        top: windowData.y,
-        width: windowData.width,
-        height: windowData.height,
+    <AnimatePresence
+      mode="wait"
+      onExitComplete={() => {
+        if (isClosing) removeWindow(id);
       }}
-      onMouseDown={handleFocus}
-      ref={windowRef}
     >
-      <div
-        className="flex cursor-move items-center justify-between bg-muted px-3 py-2 text-sm font-semibold select-none"
-        onPointerDown={startDrag}
-      >
-        <span className="flex items-center gap-2 truncate">
-          <span className="text-muted-foreground">
-            {(() => {
-              const IconComponent =
-                windowData.icon ?? icon;
-              return <IconComponent className="h-4 w-4" />;
-            })()}
-          </span>
-          <span className="truncate">{windowData.title || title}</span>
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="rounded-sm p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-            onClick={(event) => {
-              stop(event);
-              minimizeWindow(id);
-            }}
-            aria-label="Minimize"
+      {!isClosing && windowData ? (
+        <motion.div
+          key={id}
+          layout
+          initial={{ opacity: 0, scale: 0.95, y: 12 }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            borderRadius: isMaximized ? 0 : 12,
+          }}
+          exit={{ opacity: 0, scale: 0.92, y: 16 }}
+          transition={{
+            layout: { duration: 0.25, ease: [0.22, 0.8, 0.36, 1] },
+            duration: 0.18,
+            ease: [0.22, 0.8, 0.36, 1],
+          }}
+          className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
+          style={{
+            zIndex: windowData.zIndex,
+            left: windowData.x,
+            top: windowData.y,
+            width: windowData.width,
+            height: windowData.height,
+          }}
+          onMouseDown={handleFocus}
+          ref={windowRef}
+        >
+          <div
+            className="flex cursor-move items-center justify-between bg-muted px-3 py-2 text-sm font-semibold select-none"
+            onPointerDown={startDrag}
           >
-            <Minus size={14} />
-          </button>
-          <button
-            type="button"
-            className="rounded-sm p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-            onClick={(event) => {
-              stop(event);
-              toggleMaximize();
-            }}
-            aria-label={isMaximized ? "Restore" : "Maximize"}
-          >
-            {isMaximized ? <Copy size={14} /> : <Square size={14} />}
-          </button>
-          <button
-            type="button"
-            className="rounded-sm p-1 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
-            onClick={(event) => {
-              stop(event);
-              removeWindow(id);
-            }}
-            aria-label="Close"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      </div>
+            <span className="flex items-center gap-2 truncate">
+              <span className="text-muted-foreground">
+                {(() => {
+                  const IconComponent = windowData.icon ?? icon;
+                  return <IconComponent className="h-4 w-4" />;
+                })()}
+              </span>
+              <span className="truncate">{windowData.title || title}</span>
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-sm p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                onClick={(event) => {
+                  stop(event);
+                  minimizeWindow(id);
+                }}
+                aria-label="Minimize"
+              >
+                <Minus size={14} />
+              </button>
+              <button
+                type="button"
+                className="rounded-sm p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                onClick={(event) => {
+                  stop(event);
+                  toggleMaximize();
+                }}
+                aria-label={isMaximized ? "Restore" : "Maximize"}
+              >
+                {isMaximized ? <Copy size={14} /> : <Square size={14} />}
+              </button>
+              <button
+                type="button"
+                className="rounded-sm p-1 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
+                onClick={(event) => {
+                  stop(event);
+                  if (isClosing) return;
+                  setIsClosing(true);
+                }}
+                aria-label="Close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
 
-      {windowData.menubar ? (
-        <WindowMenubar menu={windowData.menubar} />
+          {windowData.menubar ? (
+            <WindowMenubar menu={windowData.menubar} />
+          ) : null}
+
+          {!windowData.isMinimized && (
+            <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
+          )}
+
+          <div className="pointer-events-none absolute inset-0">
+            <div
+              className="pointer-events-auto absolute left-0 top-0 h-3 w-3 cursor-nwse-resize"
+              onPointerDown={startResize("left", "top")}
+            />
+            <div
+              className="pointer-events-auto absolute right-0 top-0 h-3 w-3 cursor-nesw-resize"
+              onPointerDown={startResize("right", "top")}
+            />
+            <div
+              className="pointer-events-auto absolute left-0 bottom-0 h-3 w-3 cursor-nesw-resize"
+              onPointerDown={startResize("left", "bottom")}
+            />
+            <div
+              className="pointer-events-auto absolute right-0 bottom-0 h-3 w-3 cursor-nwse-resize"
+              onPointerDown={startResize("right", "bottom")}
+            />
+          </div>
+        </motion.div>
       ) : null}
-
-      {!windowData.isMinimized && (
-        <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
-      )}
-
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className="pointer-events-auto absolute left-0 top-0 h-3 w-3 cursor-nwse-resize"
-          onPointerDown={startResize("left", "top")}
-        />
-        <div
-          className="pointer-events-auto absolute right-0 top-0 h-3 w-3 cursor-nesw-resize"
-          onPointerDown={startResize("right", "top")}
-        />
-        <div
-          className="pointer-events-auto absolute left-0 bottom-0 h-3 w-3 cursor-nesw-resize"
-          onPointerDown={startResize("left", "bottom")}
-        />
-        <div
-          className="pointer-events-auto absolute right-0 bottom-0 h-3 w-3 cursor-nwse-resize"
-          onPointerDown={startResize("right", "bottom")}
-        />
-      </div>
-    </div>
+    </AnimatePresence>
   );
 };
 

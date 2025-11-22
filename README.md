@@ -1,75 +1,66 @@
-# React + TypeScript + Vite
+# Windows-Style Desktop (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based Windows-style desktop built with React and TypeScript. It renders a draggable, resizable window manager with desktop icons, context menus, and a taskbar. Included sample apps: Notes (rich text editor), Photos (placeholder), Files (placeholder list), Terminal (resume quick facts), and a PDF viewer.
 
-Currently, two official plugins are available:
+## Project Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `src/App.tsx`: bootstraps the desktop with the registered apps.
+- `src/apps`: each app lives in its own folder with a `Component.tsx` and an `index.tsx` that exports a `DesktopApp`.
+- `src/desktop`: desktop shell (icons, context menu, taskbar, window chrome, window store).
+- `src/components`: shared UI primitives (Radix UI wrappers) and the Lexical editor used by the Notes app.
+- `public/pdfs`: static PDF assets (used by the PDF viewer).
 
-## React Compiler
+## Running the project
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev     # local dev server
+npm run build   # production build
+npm run preview # serve the build output
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Adding a new desktop app (step-by-step)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1) Create your app UI: add `src/apps/<your-app>/Component.tsx` with your React component.
+2) Define the app metadata: add `src/apps/<your-app>/index.tsx` exporting a `DesktopApp` object (`id`, `title`, `icon`, `Component`, optional `menubar`). Example:
+```tsx
+// src/apps/calculator/index.tsx
+import { Calculator } from "lucide-react";
+import type { DesktopApp } from "../types";
+import CalculatorComponent from "./Component";
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+export const CalculatorApp: DesktopApp = {
+  id: "calculator",
+  title: "Calculator",
+  icon: Calculator,
+  Component: CalculatorComponent,
+  menubar: [
+    { label: "Edit", items: [{ label: "Clear", shortcut: "Esc", onSelect: () => {/* ... */} }] },
+  ],
+};
 ```
+3) Register the app so it appears on the desktop: add your export to `desktopApps` in `src/apps/index.ts`.
+```ts
+import { CalculatorApp } from "./calculator";
+export const desktopApps = [CalculatorApp /*, ...others */];
+```
+4) Optional behaviors:
+   - Menus: `WindowMenubar` reads `menubar` items; use `type: "separator"` or nested submenus.
+   - Window actions: dispatch custom events (like the Notes/PDF apps) or keep all logic inside your component.
+   - Assets: place static files in `public` (they’re served at the root).
+
+Icons are positioned with `localStorage` (`desktop-icon-positions`); new apps get a default position, and the desktop context menu can reflow/sort them.
+
+## Tech Stack
+
+- React 19 + TypeScript
+- Vite (rolldown build) with React Compiler
+- Tailwind CSS v4 + class-variance-authority + tailwind-merge + clsx
+- Radix UI primitives (context menu, menubar, navigation menu, tooltip)
+- Zustand + Immer for window state management
+- lucide-react icons
+- Lexical + shadcn-editor for the Notes rich text editor
+- react-pdf + pdfjs-dist for PDF rendering
+- react-terminal for the terminal app
+- Motion for animation primitives (available for future interactions)
+- ESLint 9 (React/TypeScript configs)

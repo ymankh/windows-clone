@@ -30,7 +30,7 @@ const Taskbar = () => {
     <div className="fixed inset-x-0 bottom-0 z-[999] bg-background/80 backdrop-blur border-t border-border">
       <div className="mx-auto flex h-14 items-center gap-2 px-4">
         {windows.length === 0 ? (
-          <span className="text-sm text-muted-foreground">No windows open</span>
+          null
         ) : (
           windows.map((win) => {
             const Icon = win.icon as (props: SVGProps<SVGSVGElement>) => React.ReactElement;

@@ -6,12 +6,12 @@ import DesktopIconMenu from "./DesktopIconMenu";
 
 type DesktopIconProps = {
   app: DesktopApp;
-  sorted?: boolean;
+  sortVersion?: number;
 };
 
 const STORAGE_KEY = "desktop-icon-positions";
 
-const DesktopIcon = ({ app, sorted = false }: DesktopIconProps) => {
+const DesktopIcon = ({ app, sortVersion = 0 }: DesktopIconProps) => {
   const openWindow = useWindowsManagerStore((state) => state.openWindow);
   const Icon: ComponentType<SVGProps<SVGSVGElement>> = app.icon;
   const [hidden, setHidden] = useState(false);
@@ -54,7 +54,7 @@ const DesktopIcon = ({ app, sorted = false }: DesktopIconProps) => {
     }
   };
   const applySortedPosition = useEffectEvent(() => {
-    if (!sorted) return;
+    if (!sortVersion) return;
     const stored = localStorage.getItem(STORAGE_KEY);
     const parsed =
       stored ? (JSON.parse(stored) as Record<string, { x: number; y: number }>) : {};
@@ -78,7 +78,7 @@ const DesktopIcon = ({ app, sorted = false }: DesktopIconProps) => {
 
   useEffect(() => {
     applySortedPosition();
-  }, [sorted]);
+  }, [sortVersion]);
 
   if (hidden) return null;
 

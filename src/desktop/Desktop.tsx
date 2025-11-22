@@ -19,7 +19,7 @@ const Desktop = ({ apps }: DesktopProps) => {
       <DesktopContextMenu onSort={() => setSortCounter((n) => n + 1)}>
         <div className="flex min-h-screen w-full flex-wrap gap-6 p-6">
           {apps.map((app) => (
-            <DesktopIcon key={app.id} app={app} sorted={sortCounter > 0} />
+            <DesktopIcon key={app.id} app={app} sortVersion={sortCounter} />
           ))}
         </div>
       </DesktopContextMenu>

@@ -6,16 +6,33 @@ import DesktopIconMenu from "./DesktopIconMenu";
 
 type DesktopIconProps = {
   app: DesktopApp;
+  sorted?: boolean;
 };
 
-const DesktopIcon = ({ app }: DesktopIconProps) => {
+const STORAGE_KEY = "desktop-icon-positions";
+
+const DesktopIcon = ({ app, sorted = false }: DesktopIconProps) => {
   const openWindow = useWindowsManagerStore((state) => state.openWindow);
   const Icon: ComponentType<SVGProps<SVGSVGElement>> = app.icon;
   const [hidden, setHidden] = useState(false);
-  const [position, setPosition] = useState<{ x: number; y: number }>(() => ({
-    x: Math.random() * 200,
-    y: Math.random() * 200,
-  }));
+  const [position, setPosition] = useState<{ x: number; y: number }>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Record<
+          string,
+          { x: number; y: number }
+        >;
+        if (parsed[app.id]) return parsed[app.id];
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      x: Math.random() * 200,
+      y: Math.random() * 200,
+    };
+  });
   const dragState = useRef({
     dragging: false,
     startX: 0,
@@ -24,16 +41,30 @@ const DesktopIcon = ({ app }: DesktopIconProps) => {
     originY: 0,
   });
 
+  const persistPosition = (next: { x: number; y: number }) => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const parsed =
+        stored ? (JSON.parse(stored) as Record<string, { x: number; y: number }>) : {};
+      parsed[app.id] = next;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     const handleMove = (event: PointerEvent) => {
       if (!dragState.current.dragging) return;
       event.preventDefault();
       const deltaX = event.clientX - dragState.current.startX;
       const deltaY = event.clientY - dragState.current.startY;
-      setPosition({
+      const next = {
         x: Math.max(0, dragState.current.originX + deltaX),
         y: Math.max(0, dragState.current.originY + deltaY),
-      });
+      };
+      setPosition(next);
+      persistPosition(next);
     };
     const handleUp = () => {
       dragState.current.dragging = false;
@@ -51,6 +82,29 @@ const DesktopIcon = ({ app }: DesktopIconProps) => {
       window.removeEventListener("pointerup", handleUp);
     };
   }, [position]);
+
+  useEffect(() => {
+    if (!sorted) return;
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const parsed =
+      stored ? (JSON.parse(stored) as Record<string, { x: number; y: number }>) : {};
+    const ids = Object.keys(parsed).length ? Object.keys(parsed) : [];
+    const index = ids.indexOf(app.id) >= 0 ? ids.indexOf(app.id) : 0;
+
+    // vertical stacking (columns wrap after N rows)
+    const rowHeight = 140;
+    const colWidth = 120;
+    const rowsPerCol = 5;
+    const col = Math.floor(index / rowsPerCol);
+    const row = index % rowsPerCol;
+
+    const next = {
+      x: col * colWidth,
+      y: row * rowHeight,
+    };
+    setPosition(next);
+    persistPosition(next);
+  }, [app.id, sorted]);
 
   if (hidden) return null;
 

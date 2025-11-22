@@ -9,17 +9,18 @@ import {
 
 type DesktopContextMenuProps = {
   children: ReactNode;
+  onSort?: () => void;
 };
 
-const DesktopContextMenu = ({ children }: DesktopContextMenuProps) => {
+const DesktopContextMenu = ({ children, onSort }: DesktopContextMenuProps) => {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onSelect={() => {}}>Refresh</ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem>Sort by Name</ContextMenuItem>
-        <ContextMenuItem>Sort by Type</ContextMenuItem>
+        <ContextMenuItem onSelect={onSort}>Sort by Name</ContextMenuItem>
+        <ContextMenuItem onSelect={onSort}>Sort by Type</ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   );

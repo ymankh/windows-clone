@@ -1,6 +1,6 @@
 import type { ComponentType, MouseEvent, ReactNode, SVGProps } from "react";
-import { useCallback, useEffect, useRef } from "react";
-import { Minus, Square, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Copy, Minus, Square, X } from "lucide-react";
 import useWindowsManagerStore from "../../stores/WindowsStore";
 import WindowMenubar from "./WindowMenubar";
 
@@ -17,7 +17,6 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   )!;
   const removeWindow = useWindowsManagerStore((state) => state.removeWindow);
   const minimizeWindow = useWindowsManagerStore((state) => state.closeWindow);
-  const toggleWindow = useWindowsManagerStore((state) => state.toggleWindow);
   const focusWindow = useWindowsManagerStore((state) => state.focusWindow);
   const updateWindowPosition = useWindowsManagerStore(
     (state) => state.updateWindowPosition
@@ -25,6 +24,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   const updateWindowBounds = useWindowsManagerStore(
     (state) => state.updateWindowBounds
   );
+  const [isMaximized, setIsMaximized] = useState(false);
+  const previousBoundsRef = useRef<{ x: number; y: number; width: number; height: number }>(null);
 
   const windowRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef({
@@ -88,7 +89,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   const minHeight = 220;
 
   const startDrag: React.PointerEventHandler<HTMLDivElement> = (event) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || isMaximized) return;
     handleFocus();
     event.preventDefault();
     const viewportWidth =
@@ -112,7 +113,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
 
   const handleResizeMove = useCallback(
     (event: PointerEvent) => {
-      if (!resizeState.current.resizing) return;
+      if (!resizeState.current.resizing || isMaximized) return;
       event.preventDefault();
       const viewportWidth =
         window.innerWidth || document.documentElement.clientWidth || 0;
@@ -172,7 +173,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         height: Math.round(newHeight),
       });
     },
-    [id, minHeight, minWidth, updateWindowBounds]
+    [id, isMaximized, minHeight, minWidth, updateWindowBounds]
   );
 
   const handleResizeUp = useCallback(() => {
@@ -188,12 +189,11 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     [handleResizeMove, handleResizeUp]
   );
 
-  if (!windowData) return null;
-
   const startResize = (
     edgeX: "left" | "right",
     edgeY: "top" | "bottom"
   ): React.PointerEventHandler<HTMLDivElement> => (event) => {
+    if (isMaximized || !windowData) return;
     event.stopPropagation();
     event.preventDefault();
     handleFocus();
@@ -211,6 +211,49 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     window.addEventListener("pointermove", handleResizeMove);
     window.addEventListener("pointerup", handleResizeUp, { once: true });
   };
+
+  const applyMaximizeBounds = useCallback(() => {
+    const taskbarHeight = 56; // matches Taskbar height (h-14)
+    const viewportWidth =
+      window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight || 0;
+    const nextWidth = Math.max(minWidth, viewportWidth);
+    const nextHeight = Math.max(minHeight, viewportHeight - taskbarHeight);
+    updateWindowBounds(id, {
+      x: 0,
+      y: 0,
+      width: nextWidth,
+      height: nextHeight,
+    });
+  }, [id, minHeight, minWidth, updateWindowBounds]);
+
+  const toggleMaximize = useCallback(() => {
+    if (!windowData) return;
+    if (isMaximized && previousBoundsRef.current) {
+      const { x, y, width, height } = previousBoundsRef.current;
+      updateWindowBounds(id, { x, y, width, height });
+      setIsMaximized(false);
+      return;
+    }
+    previousBoundsRef.current = {
+      x: windowData.x,
+      y: windowData.y,
+      width: windowData.width,
+      height: windowData.height,
+    };
+    applyMaximizeBounds();
+    setIsMaximized(true);
+  }, [applyMaximizeBounds, id, isMaximized, updateWindowBounds, windowData]);
+
+  useEffect(() => {
+    if (!isMaximized) return;
+    const handleResize = () => applyMaximizeBounds();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [applyMaximizeBounds, isMaximized]);
+
+  if (!windowData) return null;
 
   return (
     <div
@@ -256,11 +299,11 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
             className="rounded-sm p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
             onClick={(event) => {
               stop(event);
-              toggleWindow(id);
+              toggleMaximize();
             }}
-            aria-label={windowData.isMinimized ? "Restore" : "Maximize"}
+            aria-label={isMaximized ? "Restore" : "Maximize"}
           >
-            <Square size={14} />
+            {isMaximized ? <Copy size={14} /> : <Square size={14} />}
           </button>
           <button
             type="button"

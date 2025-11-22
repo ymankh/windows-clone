@@ -150,7 +150,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
                     {...props}
                 />
                 <div
-                    className='w-full h-[48px]'
+                    className='w-full h-12'
                     onDrop={() => { handleDrop({id: '', name: 'parent_div'})}}>
                 </div>
             </div>
@@ -186,10 +186,6 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
             draggedItem,
             renderItem,
             level,
-            onSelectChange,
-            expandAll,
-            initialSelectedItemId,
-            onDocumentDrag,
             ...props
         },
         ref
@@ -481,7 +477,7 @@ const TreeLeaf = React.forwardRef<
                             isSelected={isSelected}
                             default={defaultLeafIcon}
                         />
-                        <span className="flex-grow text-sm truncate">{item.name}</span>
+                        <span className="grow text-sm truncate">{item.name}</span>
                         <TreeActions isSelected={isSelected && !item.disabled}>
                             {item.actions}
                         </TreeActions>

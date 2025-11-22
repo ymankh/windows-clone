@@ -14,7 +14,7 @@ type WindowProps = {
 const Window = ({ id, title, icon, children }: WindowProps) => {
   const windowData = useWindowsManagerStore((state) =>
     state.windows.find((win) => win.id === id)
-  );
+  )!;
   const removeWindow = useWindowsManagerStore((state) => state.removeWindow);
   const minimizeWindow = useWindowsManagerStore((state) => state.closeWindow);
   const toggleWindow = useWindowsManagerStore((state) => state.toggleWindow);
@@ -84,7 +84,6 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     [handlePointerMove, handlePointerUp]
   );
 
-  if (!windowData) return null;
   const minWidth = 320;
   const minHeight = 220;
 
@@ -188,6 +187,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     },
     [handleResizeMove, handleResizeUp]
   );
+
+  if (!windowData) return null;
 
   const startResize = (
     edgeX: "left" | "right",

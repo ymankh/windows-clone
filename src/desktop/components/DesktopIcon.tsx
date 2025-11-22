@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { DesktopApp } from "../../apps";
 import useWindowsManagerStore from "../stores/WindowsStore";
 import DesktopIconMenu from "./DesktopIconMenu";
@@ -35,6 +35,7 @@ const DesktopIcon = ({ app, sorted = false }: DesktopIconProps) => {
   });
   const dragState = useRef({
     dragging: false,
+    moved: false,
     startX: 0,
     startY: 0,
     originX: 0,
@@ -52,44 +53,13 @@ const DesktopIcon = ({ app, sorted = false }: DesktopIconProps) => {
       // ignore
     }
   };
-
-  useEffect(() => {
-    const handleMove = (event: PointerEvent) => {
-      if (!dragState.current.dragging) return;
-      event.preventDefault();
-      const deltaX = event.clientX - dragState.current.startX;
-      const deltaY = event.clientY - dragState.current.startY;
-      const next = {
-        x: Math.max(0, dragState.current.originX + deltaX),
-        y: Math.max(0, dragState.current.originY + deltaY),
-      };
-      setPosition(next);
-      persistPosition(next);
-    };
-    const handleUp = () => {
-      dragState.current.dragging = false;
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
-    };
-
-    if (dragState.current.dragging) {
-      window.addEventListener("pointermove", handleMove);
-      window.addEventListener("pointerup", handleUp, { once: true });
-    }
-
-    return () => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
-    };
-  }, [position]);
-
-  useEffect(() => {
+  const applySortedPosition = useEffectEvent(() => {
     if (!sorted) return;
     const stored = localStorage.getItem(STORAGE_KEY);
     const parsed =
       stored ? (JSON.parse(stored) as Record<string, { x: number; y: number }>) : {};
     const ids = Object.keys(parsed).length ? Object.keys(parsed) : [];
-    const index = ids.indexOf(app.id) >= 0 ? ids.indexOf(app.id) : 0;
+    const index = ids.indexOf(app.id) >= 0 ? ids.indexOf(app.id) : ids.length;
 
     // vertical stacking (columns wrap after N rows)
     const rowHeight = 140;
@@ -104,7 +74,11 @@ const DesktopIcon = ({ app, sorted = false }: DesktopIconProps) => {
     };
     setPosition(next);
     persistPosition(next);
-  }, [app.id, sorted]);
+  });
+
+  useEffect(() => {
+    applySortedPosition();
+  }, [sorted]);
 
   if (hidden) return null;
 
@@ -127,23 +101,46 @@ const DesktopIcon = ({ app, sorted = false }: DesktopIconProps) => {
         style={{ left: position.x, top: position.y }}
         onPointerDown={(event) => {
           if (event.button !== 0) return;
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
           dragState.current = {
             dragging: true,
+            moved: false,
             startX: event.clientX,
             startY: event.clientY,
             originX: position.x,
             originY: position.y,
           };
         }}
-        onClick={() =>
+        onPointerMove={(event) => {
+          if (!dragState.current.dragging) return;
+          const deltaX = event.clientX - dragState.current.startX;
+          const deltaY = event.clientY - dragState.current.startY;
+          if (!dragState.current.moved && (Math.abs(deltaX) > 0 || Math.abs(deltaY) > 0)) {
+            dragState.current.moved = true;
+          }
+          const next = {
+            x: Math.max(0, dragState.current.originX + deltaX),
+            y: Math.max(0, dragState.current.originY + deltaY),
+          };
+          setPosition(next);
+          persistPosition(next);
+        }}
+        onPointerUp={(event) => {
+          if (!dragState.current.dragging) return;
+          dragState.current.dragging = false;
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onClick={() => {
+          if (dragState.current.moved) return;
           openWindow({
             id: app.id,
             title: app.title,
             icon: app.icon,
             component: <app.Component />,
             menubar: app.menubar,
-          })
-        }
+          });
+        }}
       >
         <div className="flex h-16 w-16 items-center justify-center rounded-md bg-white/5 shadow-sm">
           <Icon className="h-8 w-8" />

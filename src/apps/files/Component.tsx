@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   File,
   FileArchive,
@@ -137,8 +137,13 @@ const getIconForItem = (item: FolderItem) => {
 };
 
 const FilesComponent = () => {
-  const [selectedFolderId, setSelectedFolderId] = useState<string>("documents");
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{ folderId: string; item: string | null }>({
+    folderId: "documents",
+    item: null,
+  });
+
+  const selectedFolderId = selection.folderId;
+  const selectedItem = selection.item;
 
   const selectedFolder = useMemo(
     () => folderIndex.get(selectedFolderId)?.name ?? "Documents",
@@ -151,13 +156,9 @@ const FilesComponent = () => {
   const openFolder = (id: string | undefined) => {
     if (!id) return;
     if (folderIndex.has(id)) {
-      setSelectedFolderId(id);
+      setSelection({ folderId: id, item: null });
     }
   };
-
-  useEffect(() => {
-    setSelectedItem(null);
-  }, [selectedFolderId]);
 
   const resolveFolderId = (item: FolderItem) => {
     if (item.targetId) return item.targetId;
@@ -181,7 +182,7 @@ const FilesComponent = () => {
               selectedItemId={selectedFolderId}
               onSelectChange={(item) => {
                 if (!item) return;
-                setSelectedFolderId(item.id);
+                setSelection({ folderId: item.id, item: null });
               }}
               expandAll
               className="px-1"
@@ -221,14 +222,22 @@ const FilesComponent = () => {
                         "group flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-card/60 p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-border hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
                         isSelected && "border-primary bg-primary/10 ring-2 ring-primary/40"
                       )}
-                      onClick={() => setSelectedItem(item.name)}
+                      onClick={() =>
+                        setSelection((prev) => ({
+                          ...prev,
+                          item: item.name,
+                        }))
+                      }
                       onDoubleClick={() =>
                         item.type === "folder" && openFolder(resolveFolderId(item))
                       }
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          setSelectedItem(item.name);
+                          setSelection((prev) => ({
+                            ...prev,
+                            item: item.name,
+                          }));
                           if (item.type === "folder") {
                             openFolder(resolveFolderId(item));
                           }

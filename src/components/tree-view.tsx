@@ -43,6 +43,7 @@ type TreeRenderItemParams = {
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
     data: TreeDataItem[] | TreeDataItem
     initialSelectedItemId?: string
+    selectedItemId?: string
     onSelectChange?: (item: TreeDataItem | undefined) => void
     expandAll?: boolean
     defaultNodeIcon?: React.ComponentType<{ className?: string }>
@@ -56,6 +57,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
         {
             data,
             initialSelectedItemId,
+            selectedItemId: controlledSelectedId,
             onSelectChange,
             expandAll,
             defaultLeafIcon,
@@ -67,9 +69,15 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
         },
         ref
     ) => {
-        const [selectedItemId, setSelectedItemId] = React.useState<
-            string | undefined
-        >(initialSelectedItemId)
+        const [selectedItemId, setSelectedItemId] = React.useState<string | undefined>(
+            initialSelectedItemId
+        )
+
+        React.useEffect(() => {
+            if (controlledSelectedId !== undefined && controlledSelectedId !== selectedItemId) {
+                setSelectedItemId(controlledSelectedId)
+            }
+        }, [controlledSelectedId, selectedItemId])
 
         const [draggedItem, setDraggedItem] = React.useState<TreeDataItem | null>(null)
 
@@ -289,6 +297,11 @@ const TreeNode = ({
         handleDrop?.(item)
     }
 
+    const chevronClass = cn(
+        "h-4 w-4 shrink-0 transition-transform duration-200 text-accent-foreground/50",
+        isOpen && "rotate-90"
+    )
+
     return (
         <AccordionPrimitive.Root
             type="multiple"
@@ -296,47 +309,56 @@ const TreeNode = ({
             onValueChange={(s) => setValue(s)}
         >
             <AccordionPrimitive.Item value={item.id}>
-                <AccordionTrigger
-                    className={cn(
-                        treeVariants(),
-                        isSelected && selectedTreeVariants(),
-                        isDragOver && dragOverVariants(),
-                        item.className
-                    )}
-                    onClick={() => {
-                        handleSelectChange(item)
-                        item.onClick?.()
-                    }}
-                    draggable={!!item.draggable}
-                    onDragStart={onDragStart}
-                    onDragOver={onDragOver}
-                    onDragLeave={onDragLeave}
-                    onDrop={onDrop}
-                >
-                    {renderItem ? (
-                        renderItem({
-                            item,
-                            level,
-                            isLeaf: false,
-                            isSelected,
-                            isOpen,
-                            hasChildren,
-                        })
-                    ) : (
-                        <>
-                            <TreeIcon
-                                item={item}
-                                isSelected={isSelected}
-                                isOpen={isOpen}
-                                default={defaultNodeIcon}
-                            />
-                            <span className="text-sm truncate">{item.name}</span>
-                            <TreeActions isSelected={isSelected}>
-                                {item.actions}
-                            </TreeActions>
-                        </>
-                    )}
-                </AccordionTrigger>
+                <AccordionPrimitive.Header className="flex items-center">
+                    <AccordionPrimitive.Trigger
+                        className="mr-1 flex h-8 w-8 items-center justify-center rounded hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <ChevronRight className={chevronClass} />
+                    </AccordionPrimitive.Trigger>
+                    <div
+                        className={cn(
+                            "relative ml-1 flex flex-1 cursor-pointer items-center py-2",
+                            treeVariants(),
+                            isSelected && selectedTreeVariants(),
+                            isDragOver && dragOverVariants(),
+                            item.className
+                        )}
+                        onClick={() => {
+                            handleSelectChange(item)
+                            item.onClick?.()
+                        }}
+                        draggable={!!item.draggable}
+                        onDragStart={onDragStart}
+                        onDragOver={onDragOver}
+                        onDragLeave={onDragLeave}
+                        onDrop={onDrop}
+                    >
+                        {renderItem ? (
+                            renderItem({
+                                item,
+                                level,
+                                isLeaf: false,
+                                isSelected,
+                                isOpen,
+                                hasChildren,
+                            })
+                        ) : (
+                            <>
+                                <TreeIcon
+                                    item={item}
+                                    isSelected={isSelected}
+                                    isOpen={isOpen}
+                                    default={defaultNodeIcon}
+                                />
+                                <span className="text-sm truncate">{item.name}</span>
+                                <TreeActions isSelected={isSelected}>
+                                    {item.actions}
+                                </TreeActions>
+                            </>
+                        )}
+                    </div>
+                </AccordionPrimitive.Header>
                 <AccordionContent className="ml-4 pl-1 border-l">
                     <TreeItem
                         data={item.children ? item.children : item}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   File,
   FileArchive,
@@ -7,6 +7,7 @@ import {
   Image as ImageIcon,
   Music,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { TreeView, type TreeDataItem } from "@/components/tree-view";
 import { Split } from "@/components/ui/split";
 
@@ -15,6 +16,7 @@ type FolderItem = {
   type: "folder" | "file";
   meta?: string;
   icon?: typeof FolderIcon;
+  targetId?: string;
 };
 
 const folderTree: TreeDataItem[] = [
@@ -37,7 +39,15 @@ const folderTree: TreeDataItem[] = [
         name: "Media",
         icon: FolderIcon,
         children: [
-          { id: "photos", name: "Photos", icon: FolderIcon },
+          {
+            id: "photos",
+            name: "Photos",
+            icon: FolderIcon,
+            children: [
+              { id: "vacation", name: "Vacation", icon: FolderIcon },
+              { id: "headshots", name: "Headshots", icon: FolderIcon },
+            ],
+          },
           { id: "music", name: "Music", icon: FolderIcon },
         ],
       },
@@ -60,10 +70,10 @@ indexTree(folderTree);
 
 const folderContents: Record<string, FolderItem[]> = {
   home: [
-    { name: "Documents", type: "folder" },
-    { name: "Media", type: "folder" },
-    { name: "Downloads", type: "folder" },
-    { name: "Archive", type: "folder" },
+    { name: "Documents", type: "folder", targetId: "documents" },
+    { name: "Media", type: "folder", targetId: "media" },
+    { name: "Downloads", type: "folder", targetId: "downloads" },
+    { name: "Archive", type: "folder", targetId: "archive" },
   ],
   documents: [
     { name: "Notes.md", type: "file", meta: "12 KB", icon: FileText },
@@ -79,13 +89,20 @@ const folderContents: Record<string, FolderItem[]> = {
     { name: "Invoice-1044.pdf", type: "file", meta: "310 KB" },
   ],
   media: [
-    { name: "Photos", type: "folder" },
-    { name: "Music", type: "folder" },
+    { name: "Photos", type: "folder", targetId: "photos" },
+    { name: "Music", type: "folder", targetId: "music" },
   ],
   photos: [
-    { name: "Vacation", type: "folder" },
-    { name: "Headshots", type: "folder" },
+    { name: "Vacation", type: "folder", targetId: "vacation" },
+    { name: "Headshots", type: "folder", targetId: "headshots" },
     { name: "Wallpaper.png", type: "file", meta: "1.8 MB", icon: ImageIcon },
+  ],
+  vacation: [
+    { name: "Beach.png", type: "file", meta: "2.1 MB", icon: ImageIcon },
+    { name: "Mountains.png", type: "file", meta: "1.4 MB", icon: ImageIcon },
+  ],
+  headshots: [
+    { name: "Profile.jpg", type: "file", meta: "720 KB", icon: ImageIcon },
   ],
   music: [
     { name: "Playlist.m3u", type: "file", meta: "4 KB", icon: Music },
@@ -121,6 +138,7 @@ const getIconForItem = (item: FolderItem) => {
 
 const FilesComponent = () => {
   const [selectedFolderId, setSelectedFolderId] = useState<string>("documents");
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
   const selectedFolder = useMemo(
     () => folderIndex.get(selectedFolderId)?.name ?? "Documents",
@@ -130,8 +148,27 @@ const FilesComponent = () => {
   const items = folderContents[selectedFolderId] ?? [];
   const path = getPath(selectedFolderId);
 
+  const openFolder = (id: string | undefined) => {
+    if (!id) return;
+    if (folderIndex.has(id)) {
+      setSelectedFolderId(id);
+    }
+  };
+
+  useEffect(() => {
+    setSelectedItem(null);
+  }, [selectedFolderId]);
+
+  const resolveFolderId = (item: FolderItem) => {
+    if (item.targetId) return item.targetId;
+    const match = Array.from(folderIndex.entries()).find(
+      ([, meta]) => meta.name === item.name
+    );
+    return match?.[0];
+  };
+
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
+    <div className="flex h-full min-h-0 w-full flex-col select-none">
       <Split className="flex-1 min-h-0" initialLeft={260} minLeft={200} minRight={300}>
         <div className="flex h-full flex-col border-r border-border bg-muted/40">
           <div className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
@@ -141,6 +178,7 @@ const FilesComponent = () => {
             <TreeView
               data={folderTree}
               initialSelectedItemId={selectedFolderId}
+              selectedItemId={selectedFolderId}
               onSelectChange={(item) => {
                 if (!item) return;
                 setSelectedFolderId(item.id);
@@ -173,10 +211,29 @@ const FilesComponent = () => {
               <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
                 {items.map((item) => {
                   const Icon = getIconForItem(item);
+                  const isSelected = selectedItem === item.name;
                   return (
                     <div
                       key={item.name}
-                      className="group flex items-start gap-3 rounded-lg border border-border/60 bg-card/60 p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-border hover:shadow"
+                      role="button"
+                      tabIndex={0}
+                      className={cn(
+                        "group flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-card/60 p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-border hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                        isSelected && "border-primary bg-primary/10 ring-2 ring-primary/40"
+                      )}
+                      onClick={() => setSelectedItem(item.name)}
+                      onDoubleClick={() =>
+                        item.type === "folder" && openFolder(resolveFolderId(item))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedItem(item.name);
+                          if (item.type === "folder") {
+                            openFolder(resolveFolderId(item));
+                          }
+                        }
+                      }}
                     >
                       <div className="rounded-md bg-muted p-2 text-muted-foreground group-hover:bg-accent group-hover:text-accent-foreground">
                         <Icon className="h-5 w-5" />

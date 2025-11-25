@@ -16,6 +16,7 @@ const PdfComponent = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [renderWidth, setRenderWidth] = useState<number | undefined>(undefined);
   const [scale, setScale] = useState(1);
+  const [numPages, setNumPages] = useState(0);
 
   useEffect(() => {
     const handleZoom = (event: Event) => {
@@ -50,17 +51,29 @@ const PdfComponent = () => {
       ref={containerRef}
       className="flex h-full w-full flex-col items-center overflow-auto"
     >
-      <Document file={fileUrl} loading={<div className="p-4">Loading PDF...</div>}>
-        <Page
-          pageNumber={1}
-          width={renderWidth ? renderWidth * scale : renderWidth}
-          renderTextLayer
-          renderAnnotationLayer
-          onLoadSuccess={(page) => {
-            const maxWidth = containerRef.current?.clientWidth ?? page.originalWidth;
-            setRenderWidth(Math.min(page.originalWidth, maxWidth));
-          }}
-        />
+      <Document
+        file={fileUrl}
+        loading={<div className="p-4">Loading PDF...</div>}
+        onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+      >
+        <div className="flex w-full flex-col items-center gap-6 py-4">
+          {Array.from({ length: numPages }, (_, index) => (
+            <Page
+              key={index + 1}
+              pageNumber={index + 1}
+              width={renderWidth ? renderWidth * scale : renderWidth}
+              renderTextLayer
+              renderAnnotationLayer
+              onLoadSuccess={(page) => {
+                const maxWidth = containerRef.current?.clientWidth ?? page.originalWidth;
+                setRenderWidth((current) => {
+                  const targetWidth = Math.min(page.originalWidth, maxWidth);
+                  return current ? Math.min(current, targetWidth) : targetWidth;
+                });
+              }}
+            />
+          ))}
+        </div>
       </Document>
     </div>
   );

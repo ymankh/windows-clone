@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import useThemeStore from "../modules/personalization/store/ThemeStore";
+import useThemeStore from "./ThemeStore";
 
 type CustomBackground = { id: string; name: string; url: string };
 

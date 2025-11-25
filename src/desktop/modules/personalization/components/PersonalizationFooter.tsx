@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import useThemeStore from "../store/ThemeStore";
-import usePersonalizationStore from "../../../stores/PersonalizationStore";
+import usePersonalizationStore from "../store/PersonalizationStore";
 import { themes } from "../../../themes";
 
 const PersonalizationFooter = () => {

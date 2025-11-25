@@ -5,7 +5,7 @@ import useThemeStore from "../store/ThemeStore";
 import ThemeSection from "./ThemeSection";
 import BackgroundSection from "./BackgroundSection";
 import PersonalizationHeader from "./PersonalizationHeader";
-import usePersonalizationStore from "../../../stores/PersonalizationStore";
+import usePersonalizationStore from "../store/PersonalizationStore";
 import PersonalizationFooter from "./PersonalizationFooter";
 
 const PersonalizationWindow = () => {

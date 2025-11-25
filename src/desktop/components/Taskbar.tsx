@@ -27,7 +27,7 @@ const Taskbar = () => {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[999] bg-background/80 backdrop-blur border-t border-border">
+    <div className="fixed inset-x-0 bottom-0 z-999 bg-background/80 backdrop-blur border-t border-border">
       <div className="mx-auto flex h-14 items-center gap-2 px-4">
         {windows.length === 0 ? (
           null
@@ -49,7 +49,7 @@ const Taskbar = () => {
                 )}
               >
                 <Icon className="h-4 w-4" />
-                <span className="max-w-[10rem] truncate">{win.title}</span>
+                <span className="max-w-40 truncate">{win.title}</span>
               </button>
             );
           })

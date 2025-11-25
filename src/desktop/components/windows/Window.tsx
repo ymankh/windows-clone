@@ -275,7 +275,6 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
             opacity: 1,
             scale: 1,
             y: 0,
-            borderRadius: isMaximized ? 0 : 12,
           }}
           exit={{ opacity: 0, scale: 0.92, y: 16 }}
           transition={{
@@ -310,7 +309,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="rounded-sm p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                className="p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
                 onClick={(event) => {
                   stop(event);
                   minimizeWindow(id);
@@ -321,7 +320,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               </button>
               <button
                 type="button"
-                className="rounded-sm p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                className="p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
                 onClick={(event) => {
                   stop(event);
                   toggleMaximize();
@@ -332,7 +331,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               </button>
               <button
                 type="button"
-                className="rounded-sm p-1 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
+                className="p-1 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
                 onClick={(event) => {
                   stop(event);
                   if (isClosing) return;

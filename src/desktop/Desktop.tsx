@@ -6,9 +6,9 @@ import Taskbar from "./components/Taskbar";
 import useWindowsManagerStore from "./stores/WindowsStore";
 import DesktopContextMenu from "./components/DesktopContextMenu";
 import { AnimatePresence } from "motion/react";
-import PersonalizationWindow from "./components/PersonalizationWindow";
+import PersonalizationWindow from "./modules/personalization/components/PersonalizationWindow";
 import { Palette } from "lucide-react";
-import useThemeStore from "./stores/ThemeStore";
+import useThemeStore from "./modules/personalization/store/ThemeStore";
 
 type DesktopProps = {
   apps: DesktopApp[];
@@ -37,7 +37,13 @@ const Desktop = ({ apps }: DesktopProps) => {
 
   return (
     <div
-      className="relative min-h-screen w-full bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_25%),radial-gradient(circle_at_80%_10%,rgba(255,255,255,0.06),transparent_20%),radial-gradient(circle_at_50%_80%,rgba(0,0,0,0.05),transparent_25%)] bg-background text-foreground"
+      className="relative min-h-screen w-full bg-background text-foreground"
+      style={{
+        backgroundImage: "var(--desktop-background-image)",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
       onClick={() => setSelectedIconId(null)}
     >
       <DesktopContextMenu

@@ -108,8 +108,8 @@ const DesktopIcon = ({
       <button
         type="button"
         className={cn(
-          "absolute flex w-24 flex-col items-center gap-2 rounded-md p-2 text-sm font-medium text-foreground/80 transition hover:bg-white/10",
-          selected && "bg-white/15 ring-2 ring-primary/60"
+          "absolute flex w-24 flex-col items-center gap-2 rounded-md p-2 text-sm font-medium text-foreground/80 transition hover:bg-white/15 backdrop-blur-md",
+          selected && "bg-white/20 ring-2 ring-primary/60"
         )}
         style={{ left: position.x, top: position.y }}
         onPointerDown={(event) => {

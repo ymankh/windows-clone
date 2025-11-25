@@ -1,11 +1,14 @@
+import { useEffect, useState } from "react";
 import type { DesktopApp } from "../apps";
 import DesktopIcon from "./components/DesktopIcon";
 import Window from "./components/windows/Window";
 import Taskbar from "./components/Taskbar";
 import useWindowsManagerStore from "./stores/WindowsStore";
 import DesktopContextMenu from "./components/DesktopContextMenu";
-import { useState } from "react";
 import { AnimatePresence } from "motion/react";
+import PersonalizationWindow from "./components/PersonalizationWindow";
+import { Palette } from "lucide-react";
+import useThemeStore from "./stores/ThemeStore";
 
 type DesktopProps = {
   apps: DesktopApp[];
@@ -13,15 +16,34 @@ type DesktopProps = {
 
 const Desktop = ({ apps }: DesktopProps) => {
   const windows = useWindowsManagerStore((state) => state.windows);
+  const openWindow = useWindowsManagerStore((state) => state.openWindow);
   const [sortCounter, setSortCounter] = useState(0);
   const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
+  const applyTheme = useThemeStore((state) => state.apply);
+
+  useEffect(() => {
+    applyTheme();
+  }, [applyTheme]);
+
+  const openPersonalization = () =>
+    openWindow({
+      id: "personalization",
+      title: "Personalization",
+      icon: Palette,
+      component: <PersonalizationWindow />,
+      width: 860,
+      height: 560,
+    });
 
   return (
     <div
       className="relative min-h-screen w-full bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_25%),radial-gradient(circle_at_80%_10%,rgba(255,255,255,0.06),transparent_20%),radial-gradient(circle_at_50%_80%,rgba(0,0,0,0.05),transparent_25%)] bg-background text-foreground"
       onClick={() => setSelectedIconId(null)}
     >
-      <DesktopContextMenu onSort={() => setSortCounter((n) => n + 1)}>
+      <DesktopContextMenu
+        onSort={() => setSortCounter((n) => n + 1)}
+        onOpenPersonalization={openPersonalization}
+      >
         <div
           className="flex min-h-screen w-full flex-wrap gap-6 p-6"
           onClick={(event) => {

@@ -10,9 +10,14 @@ import {
 type DesktopContextMenuProps = {
   children: ReactNode;
   onSort?: () => void;
+  onOpenPersonalization?: () => void;
 };
 
-const DesktopContextMenu = ({ children, onSort }: DesktopContextMenuProps) => {
+const DesktopContextMenu = ({
+  children,
+  onSort,
+  onOpenPersonalization,
+}: DesktopContextMenuProps) => {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
@@ -21,6 +26,10 @@ const DesktopContextMenu = ({ children, onSort }: DesktopContextMenuProps) => {
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={onSort}>Sort by Name</ContextMenuItem>
         <ContextMenuItem onSelect={onSort}>Sort by Type</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={() => onOpenPersonalization?.()}>
+          Personalization
+        </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   );

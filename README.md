@@ -51,6 +51,45 @@ export const desktopApps = [CalculatorApp /*, ...others */];
 
 Icons are positioned with `localStorage` (`desktop-icon-positions`); new apps get a default position, and the desktop context menu can reflow/sort them.
 
+## Personalization & Themes
+
+- Open the desktop context menu (right click) and choose **Personalization** to switch themes and toggle light/dark mode. A dedicated window opens with a list of themes and a light/dark switch.
+- Theme state persists in `localStorage` (`desktop-theme`) and is applied to `document.documentElement` via `src/desktop/stores/ThemeStore.ts`.
+- Themes are defined in `src/desktop/themes.ts` as plain objects: `id`, `name`, `description`, `swatch`, and optional `css` (raw CSS that sets your custom variables).
+
+### Adding a new theme
+1) Create a theme entry in `src/desktop/themes.ts`:
+```ts
+{
+  id: "my-theme",
+  name: "My Theme",
+  description: "Short description",
+  swatch: {
+    background: "#f5f5f5",
+    foreground: "#1a1a1a",
+    primary: "#4f46e5",
+    accent: "#22d3ee", // optional
+  },
+  css: `
+:root {
+  --background: #f5f5f5;
+  --foreground: #1a1a1a;
+  --primary: #4f46e5;
+  --accent: #22d3ee;
+  /* add the rest of your variables here */
+}
+.dark {
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --primary: #a855f7;
+  --accent: #22d3ee;
+  /* dark overrides */
+}
+  `,
+}
+```
+2) Save; the theme automatically appears in the Personalization window. Selecting it injects the `css` into a `<style>` tag and toggles light/dark via the `ThemeStore`.
+
 ## Tech Stack
 
 - React 19 + TypeScript

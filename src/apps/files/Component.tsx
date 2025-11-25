@@ -1,23 +1,11 @@
 import { useMemo, useState } from "react";
-import {
-  File,
-  FileArchive,
-  FileText,
-  Folder as FolderIcon,
-  Image as ImageIcon,
-  Music,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { TreeView, type TreeDataItem } from "@/components/tree-view";
+import { FileArchive, FileText, Folder as FolderIcon, Image as ImageIcon, Music } from "lucide-react";
+import { type TreeDataItem } from "@/components/tree-view";
 import { Split } from "@/components/ui/split";
-
-type FolderItem = {
-  name: string;
-  type: "folder" | "file";
-  meta?: string;
-  icon?: typeof FolderIcon;
-  targetId?: string;
-};
+import { FilesGrid } from "./componsnts/FilesGrid";
+import { Header } from "./componsnts/Header";
+import { Sidebar } from "./componsnts/Sidebar";
+import { type FolderItem, type Selection } from "./componsnts/types";
 
 const folderTree: TreeDataItem[] = [
   {
@@ -130,14 +118,8 @@ const getPath = (id: string) => {
   return parts.length ? parts.join(" / ") : "Home";
 };
 
-const getIconForItem = (item: FolderItem) => {
-  if (item.type === "folder") return FolderIcon;
-  if (item.icon) return item.icon;
-  return File;
-};
-
 const FilesComponent = () => {
-  const [selection, setSelection] = useState<{ folderId: string; item: string | null }>({
+  const [selection, setSelection] = useState<Selection>({
     folderId: "documents",
     item: null,
   });
@@ -168,96 +150,33 @@ const FilesComponent = () => {
     return match?.[0];
   };
 
+  const handleItemOpen = (item: FolderItem) =>
+    item.type === "folder" && openFolder(resolveFolderId(item));
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col select-none">
       <Split className="flex-1 min-h-0" initialLeft={260} minLeft={200} minRight={300}>
-        <div className="flex h-full flex-col border-r border-border bg-muted/40">
-          <div className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
-            Folders
-          </div>
-          <div className="flex-1 overflow-auto">
-            <TreeView
-              data={folderTree}
-              initialSelectedItemId={selectedFolderId}
-              selectedItemId={selectedFolderId}
-              onSelectChange={(item) => {
-                if (!item) return;
-                setSelection({ folderId: item.id, item: null });
-              }}
-              expandAll
-              className="px-1"
-            />
-          </div>
-        </div>
+        <Sidebar
+          tree={folderTree}
+          selectedFolderId={selectedFolderId}
+          onFolderSelect={(folderId) => setSelection({ folderId, item: null })}
+        />
 
         <div className="flex h-full flex-col bg-background">
-          <div className="flex items-center justify-between border-b border-border px-4 py-2">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Current folder
-              </div>
-              <div className="text-sm font-semibold">{path}</div>
-            </div>
-            <div className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-              {selectedFolder}
-            </div>
-          </div>
+          <Header path={path} label={selectedFolder} />
 
           <div className="flex-1 overflow-auto p-4">
-            {items.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                This folder is empty.
-              </div>
-            ) : (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-                {items.map((item) => {
-                  const Icon = getIconForItem(item);
-                  const isSelected = selectedItem === item.name;
-                  return (
-                    <div
-                      key={item.name}
-                      role="button"
-                      tabIndex={0}
-                      className={cn(
-                        "group flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-card/60 p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-border hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                        isSelected && "border-primary bg-primary/10 ring-2 ring-primary/40"
-                      )}
-                      onClick={() =>
-                        setSelection((prev) => ({
-                          ...prev,
-                          item: item.name,
-                        }))
-                      }
-                      onDoubleClick={() =>
-                        item.type === "folder" && openFolder(resolveFolderId(item))
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setSelection((prev) => ({
-                            ...prev,
-                            item: item.name,
-                          }));
-                          if (item.type === "folder") {
-                            openFolder(resolveFolderId(item));
-                          }
-                        }
-                      }}
-                    >
-                      <div className="rounded-md bg-muted p-2 text-muted-foreground group-hover:bg-accent group-hover:text-accent-foreground">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">{item.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {item.meta ?? (item.type === "folder" ? "Folder" : "File")}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <FilesGrid
+              items={items}
+              selectedItem={selectedItem}
+              onSelect={(itemName) =>
+                setSelection((prev) => ({
+                  ...prev,
+                  item: itemName,
+                }))
+              }
+              onOpenFolder={handleItemOpen}
+            />
           </div>
         </div>
       </Split>

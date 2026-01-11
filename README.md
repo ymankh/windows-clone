@@ -3,7 +3,7 @@
 A web-based Windows-style desktop built with React and TypeScript. It renders a draggable, resizable window manager with desktop icons, context menus, and a taskbar. Included sample apps: Notes (rich text editor), Photos (placeholder), Files (placeholder list), Terminal (resume quick facts), and a PDF viewer.
 
 ## Live Demo
-- [https://desktop.yamanalkhashashneh.online/](desktop.yamanalkhashashneh.online)
+- [desktop.yamanalkhashashneh.online](https://desktop.yamanalkhashashneh.online/)
 
 ## Project Structure
 

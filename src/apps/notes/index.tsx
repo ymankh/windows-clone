@@ -1,13 +1,12 @@
 import { FileText } from "lucide-react";
 import type { DesktopApp } from "../types";
 import NotesComponent from "./Component";
+import { notesFileDataSchema } from "./schema";
 
-export const NotesApp: DesktopApp = {
-  id: "notes",
-  title: "Notes",
-  icon: FileText,
-  Component: NotesComponent,
-  menubar: [
+const createNotesMenubar = (windowId: string) => {
+  const inputId = `notes-md-input-${windowId}`;
+
+  return [
     {
       label: "File",
       items: [
@@ -16,20 +15,24 @@ export const NotesApp: DesktopApp = {
           shortcut: "Ctrl+N",
           onSelect: () =>
             window.dispatchEvent(
-              new CustomEvent("notes-editor-command", { detail: { action: "clear" } })
+              new CustomEvent("notes-editor-command", {
+                detail: { action: "clear", windowId },
+              })
             ),
         },
         {
           label: "Open (md/json)",
           onSelect: () => {
-            document.getElementById("notes-md-input")?.click();
+            document.getElementById(inputId)?.click();
           },
         },
         {
           label: "Save as Markdown",
           onSelect: () =>
             window.dispatchEvent(
-              new CustomEvent("notes-file-command", { detail: { action: "save-md" } })
+              new CustomEvent("notes-file-command", {
+                detail: { action: "save-md", windowId },
+              })
             ),
         },
       ],
@@ -42,7 +45,9 @@ export const NotesApp: DesktopApp = {
           shortcut: "Ctrl+Z",
           onSelect: () =>
             window.dispatchEvent(
-              new CustomEvent("notes-editor-command", { detail: { action: "undo" } })
+              new CustomEvent("notes-editor-command", {
+                detail: { action: "undo", windowId },
+              })
             ),
         },
         {
@@ -50,7 +55,9 @@ export const NotesApp: DesktopApp = {
           shortcut: "Ctrl+Y",
           onSelect: () =>
             window.dispatchEvent(
-              new CustomEvent("notes-editor-command", { detail: { action: "redo" } })
+              new CustomEvent("notes-editor-command", {
+                detail: { action: "redo", windowId },
+              })
             ),
         },
       ],
@@ -63,7 +70,9 @@ export const NotesApp: DesktopApp = {
           shortcut: "Ctrl+B",
           onSelect: () =>
             window.dispatchEvent(
-              new CustomEvent("notes-editor-command", { detail: { action: "bold" } })
+              new CustomEvent("notes-editor-command", {
+                detail: { action: "bold", windowId },
+              })
             ),
         },
         {
@@ -71,7 +80,9 @@ export const NotesApp: DesktopApp = {
           shortcut: "Ctrl+I",
           onSelect: () =>
             window.dispatchEvent(
-              new CustomEvent("notes-editor-command", { detail: { action: "italic" } })
+              new CustomEvent("notes-editor-command", {
+                detail: { action: "italic", windowId },
+              })
             ),
         },
         {
@@ -79,10 +90,21 @@ export const NotesApp: DesktopApp = {
           shortcut: "Ctrl+U",
           onSelect: () =>
             window.dispatchEvent(
-              new CustomEvent("notes-editor-command", { detail: { action: "underline" } })
+              new CustomEvent("notes-editor-command", {
+                detail: { action: "underline", windowId },
+              })
             ),
         },
       ],
     },
-  ],
+  ];
+};
+
+export const NotesApp: DesktopApp = {
+  id: "notes",
+  title: "Notes",
+  icon: FileText,
+  Component: NotesComponent,
+  createMenubar: createNotesMenubar,
+  fileCapabilities: [{ fileType: "notes", schema: notesFileDataSchema }],
 };

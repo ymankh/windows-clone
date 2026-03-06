@@ -4,8 +4,10 @@ import { Split } from "@/components/ui/split";
 import { FilesGrid } from "./componsnts/FilesGrid";
 import { Header } from "./componsnts/Header";
 import { Sidebar } from "./componsnts/Sidebar";
-import { type FolderItem, type OpenWithOption, type Selection } from "./componsnts/types";
-import { desktopApps, type DesktopApp } from "@/apps";
+import { type FileEntry, type FolderItem, type OpenWithOption, type Selection } from "./componsnts/types";
+import { desktopApps } from "@/apps";
+import { buildAppWindow } from "@/apps/windowBuilder";
+import { toAppInstanceId } from "@/apps/windowing";
 import useWindowsManagerStore from "@/desktop/stores/WindowsStore";
 import { useMemo, useState } from "react";
 
@@ -66,17 +68,62 @@ const folderContents: Record<string, FolderItem[]> = {
     { name: "Archive", type: "folder", targetId: "archive" },
   ],
   documents: [
-    { name: "Notes.md", type: "file", meta: "12 KB", icon: FileText, openWith: ["notes"] },
-    { name: "Project-Proposal.docx", type: "file", meta: "84 KB", icon: FileText, openWith: ["notes"] },
-    { name: "Budget.xlsx", type: "file", meta: "32 KB", icon: FileText, openWith: ["notes"] },
+    {
+      name: "Notes.md",
+      type: "file",
+      fileType: "notes",
+      meta: "12 KB",
+      icon: FileText,
+      data: { text: "# Notes\n\nThis note came from Explorer file data." },
+    },
+    {
+      name: "Project-Proposal.docx",
+      type: "file",
+      fileType: "notes",
+      meta: "84 KB",
+      icon: FileText,
+      data: { text: "Project Proposal draft content." },
+    },
+    {
+      name: "Budget.xlsx",
+      type: "file",
+      fileType: "notes",
+      meta: "32 KB",
+      icon: FileText,
+      data: { text: "Budget summary in plain text format." },
+    },
   ],
   reports: [
-    { name: "Q1-Report.pdf", type: "file", meta: "1.2 MB", openWith: ["pdf"] },
-    { name: "Q2-Report.pdf", type: "file", meta: "1.3 MB", openWith: ["pdf"] },
+    {
+      name: "Q1-Report.pdf",
+      type: "file",
+      fileType: "pdf",
+      meta: "1.2 MB",
+      data: { url: "/pdfs/resume.pdf" },
+    },
+    {
+      name: "Q2-Report.pdf",
+      type: "file",
+      fileType: "pdf",
+      meta: "1.3 MB",
+      data: { url: "/pdfs/resume.pdf" },
+    },
   ],
   invoices: [
-    { name: "Invoice-1043.pdf", type: "file", meta: "320 KB", openWith: ["pdf"] },
-    { name: "Invoice-1044.pdf", type: "file", meta: "310 KB", openWith: ["pdf"] },
+    {
+      name: "Invoice-1043.pdf",
+      type: "file",
+      fileType: "pdf",
+      meta: "320 KB",
+      data: { url: "/pdfs/resume.pdf" },
+    },
+    {
+      name: "Invoice-1044.pdf",
+      type: "file",
+      fileType: "pdf",
+      meta: "310 KB",
+      data: { url: "/pdfs/resume.pdf" },
+    },
   ],
   media: [
     { name: "Photos", type: "folder", targetId: "photos" },
@@ -85,26 +132,95 @@ const folderContents: Record<string, FolderItem[]> = {
   photos: [
     { name: "Vacation", type: "folder", targetId: "vacation" },
     { name: "Headshots", type: "folder", targetId: "headshots" },
-    { name: "Wallpaper.png", type: "file", meta: "1.8 MB", icon: ImageIcon, openWith: ["photos"] },
+    {
+      name: "Wallpaper.png",
+      type: "file",
+      fileType: "image",
+      meta: "1.8 MB",
+      icon: ImageIcon,
+      data: { url: "/wallpaper.jpg", alt: "Wallpaper" },
+    },
   ],
   vacation: [
-    { name: "Beach.png", type: "file", meta: "2.1 MB", icon: ImageIcon, openWith: ["photos"] },
-    { name: "Mountains.png", type: "file", meta: "1.4 MB", icon: ImageIcon, openWith: ["photos"] },
+    {
+      name: "Beach.png",
+      type: "file",
+      fileType: "image",
+      meta: "2.1 MB",
+      icon: ImageIcon,
+      data: { url: "/wallpaper.jpg", alt: "Beach" },
+    },
+    {
+      name: "Mountains.png",
+      type: "file",
+      fileType: "image",
+      meta: "1.4 MB",
+      icon: ImageIcon,
+      data: { url: "/wallpaper.jpg", alt: "Mountains" },
+    },
   ],
   headshots: [
-    { name: "Profile.jpg", type: "file", meta: "720 KB", icon: ImageIcon, openWith: ["photos"] },
+    {
+      name: "Profile.jpg",
+      type: "file",
+      fileType: "image",
+      meta: "720 KB",
+      icon: ImageIcon,
+      data: { url: "/wallpaper.jpg", alt: "Profile" },
+    },
   ],
   music: [
-    { name: "Playlist.m3u", type: "file", meta: "4 KB", icon: Music },
-    { name: "Demo.mp3", type: "file", meta: "8.2 MB", icon: Music },
+    {
+      name: "Playlist.m3u",
+      type: "file",
+      fileType: "audio",
+      meta: "4 KB",
+      icon: Music,
+      data: { url: "/audio/demo.mp3", title: "Playlist" },
+    },
+    {
+      name: "Demo.mp3",
+      type: "file",
+      fileType: "audio",
+      meta: "8.2 MB",
+      icon: Music,
+      data: { url: "/audio/demo.mp3", title: "Demo" },
+    },
   ],
   downloads: [
-    { name: "release.zip", type: "file", meta: "24 MB", icon: FileArchive },
-    { name: "setup.exe", type: "file", meta: "52 MB" },
+    {
+      name: "release.zip",
+      type: "file",
+      fileType: "archive",
+      meta: "24 MB",
+      icon: FileArchive,
+      data: { entries: ["README.md", "dist/app.exe"] },
+    },
+    {
+      name: "setup.exe",
+      type: "file",
+      fileType: "binary",
+      meta: "52 MB",
+      data: { bytes: 52 * 1024 * 1024 },
+    },
   ],
   archive: [
-    { name: "2019-backup.zip", type: "file", meta: "110 MB", icon: FileArchive },
-    { name: "old-notes.txt", type: "file", meta: "8 KB", icon: FileText },
+    {
+      name: "2019-backup.zip",
+      type: "file",
+      fileType: "archive",
+      meta: "110 MB",
+      icon: FileArchive,
+      data: { entries: ["old-notes.txt", "photos/"] },
+    },
+    {
+      name: "old-notes.txt",
+      type: "file",
+      fileType: "notes",
+      meta: "8 KB",
+      icon: FileText,
+      data: { text: "Archived notes file content." },
+    },
   ],
 };
 
@@ -118,21 +234,6 @@ const getPath = (id: string) => {
     current = meta.parent;
   }
   return parts.length ? parts.join(" / ") : "Home";
-};
-
-const getExtension = (name: string) => {
-  const dotIndex = name.lastIndexOf(".");
-  return dotIndex >= 0 ? name.slice(dotIndex).toLowerCase() : "";
-};
-
-const extensionDefaults: Record<string, string> = {
-  ".pdf": "pdf",
-  ".png": "photos",
-  ".jpg": "photos",
-  ".jpeg": "photos",
-  ".gif": "photos",
-  ".md": "notes",
-  ".txt": "notes",
 };
 
 const FilesComponent = () => {
@@ -165,6 +266,7 @@ const FilesComponent = () => {
   };
 
   const resolveFolderId = (item: FolderItem) => {
+    if (item.type !== "folder") return undefined;
     if (item.targetId) return item.targetId;
     const match = Array.from(folderIndex.entries()).find(
       ([, meta]) => meta.name === item.name
@@ -176,18 +278,11 @@ const FilesComponent = () => {
     item.type === "folder" && openFolder(resolveFolderId(item));
 
   const resolveOpenWithOptions = (item: FolderItem): OpenWithOption[] => {
-    const preferredIds =
-      item.openWith && item.openWith.length
-        ? item.openWith
-        : (() => {
-            const ext = getExtension(item.name);
-            const fallback = extensionDefaults[ext];
-            return fallback ? [fallback] : [];
-          })();
-
-    return preferredIds
-      .map((appId) => appRegistry.get(appId))
-      .filter((app): app is DesktopApp => Boolean(app))
+    if (item.type !== "file") return [];
+    return Array.from(appRegistry.values())
+      .filter((app) =>
+        app.fileCapabilities?.some((capability) => capability.fileType === item.fileType)
+      )
       .map((app) => ({
         id: app.id,
         title: app.title,
@@ -195,22 +290,30 @@ const FilesComponent = () => {
       }));
   };
 
-  const openApp = (appId: string) => {
+  const openApp = (appId: string, file: FileEntry) => {
     const app = appRegistry.get(appId);
     if (!app) return;
-    openWindow({
-      id: app.id,
-      title: app.title,
-      icon: app.icon,
-      component: <app.Component />,
-      menubar: app.menubar,
-    });
+    const windowId = toAppInstanceId(
+      app.id,
+      `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    );
+    openWindow(
+      buildAppWindow(app, {
+        windowId,
+        fileContext: {
+          name: file.name,
+          type: file.fileType,
+          data: file.data,
+        },
+      })
+    );
   };
 
   const openFileWithDefault = (item: FolderItem) => {
+    if (item.type !== "file") return;
     const defaultTarget = resolveOpenWithOptions(item)[0];
     if (defaultTarget) {
-      openApp(defaultTarget.id);
+      openApp(defaultTarget.id, item);
     }
   };
 
@@ -225,7 +328,8 @@ const FilesComponent = () => {
 
   const handleOpenWith = (item: FolderItem, appId: string) => {
     setSelection((prev) => ({ ...prev, item: item.name }));
-    openApp(appId);
+    if (item.type !== "file") return;
+    openApp(appId, item);
   };
 
   return (

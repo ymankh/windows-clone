@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from "react";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { DesktopApp } from "../../apps";
+import { buildAppWindow } from "../../apps/windowBuilder";
 import useWindowsManagerStore from "../stores/WindowsStore";
 import DesktopIconMenu from "./DesktopIconMenu";
 import { cn } from "@/lib/utils";
@@ -146,15 +147,7 @@ const DesktopIcon = ({
 
   return (
     <DesktopIconMenu
-      onOpen={() =>
-        openWindow({
-          id: app.id,
-          title: app.title,
-          icon: app.icon,
-          component: <app.Component />,
-          menubar: app.menubar,
-        })
-      }
+      onOpen={() => openWindow(buildAppWindow(app))}
       onDelete={() => setHidden(true)}
     >
       <button
@@ -242,13 +235,7 @@ const DesktopIcon = ({
         onDoubleClick={(event) => {
           event.stopPropagation();
           clearSelection?.();
-          openWindow({
-            id: app.id,
-            title: app.title,
-            icon: app.icon,
-            component: <app.Component />,
-            menubar: app.menubar,
-          });
+          openWindow(buildAppWindow(app));
         }}
       >
         <div className="flex h-16 w-16 items-center justify-center rounded-md bg-white/5 shadow-sm">

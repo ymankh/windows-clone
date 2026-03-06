@@ -1,14 +1,25 @@
 import type { ComponentType, SVGProps } from "react";
 import { Folder as FolderIcon } from "lucide-react";
+import type { FileType } from "@/apps/fileTypes";
 
-export type FolderItem = {
+type BaseItem = {
   name: string;
-  type: "folder" | "file";
   meta?: string;
   icon?: typeof FolderIcon;
-  targetId?: string;
-  openWith?: string[];
 };
+
+export type FolderEntry = BaseItem & {
+  type: "folder";
+  targetId?: string;
+};
+
+export type FileEntry = BaseItem & {
+  type: "file";
+  fileType: FileType;
+  data: unknown;
+};
+
+export type FolderItem = FolderEntry | FileEntry;
 
 export type Selection = { folderId: string; item: string | null };
 

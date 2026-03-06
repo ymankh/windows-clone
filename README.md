@@ -1,6 +1,15 @@
 # Windows-Style Desktop (React + Vite)
 
-A web-based Windows-style desktop built with React and TypeScript. It renders a draggable, resizable window manager with desktop icons, context menus, and a taskbar. Included sample apps: Notes (rich text editor), Photos (placeholder), Files (placeholder list), Terminal (resume quick facts), and a PDF viewer.
+A web-based Windows-style desktop built with React and TypeScript. It renders a draggable, resizable window manager with desktop icons, context menus, a taskbar, theming, and a small set of desktop apps.
+
+Included apps:
+- Browser: simple in-window web browser with address bar, navigation controls, and project quick links.
+- Notes: rich text editor with menu commands and file open/save actions.
+- Music: local audio player with Explorer "open with" support for tracks in `public/`.
+- Photos: image viewer for files opened from Explorer.
+- Files: Explorer-style file browser with folders and app-aware file opening.
+- Terminal: resume/portfolio quick facts in a terminal UI.
+- PDF viewer: in-window PDF reader with zoom controls.
 
 ## Live Demo
 - [desktop.yamanalkhashashneh.online](https://desktop.yamanalkhashashneh.online/)
@@ -11,7 +20,8 @@ A web-based Windows-style desktop built with React and TypeScript. It renders a 
 - `src/apps`: each app lives in its own folder with a `Component.tsx` and an `index.tsx` that exports a `DesktopApp`.
 - `src/desktop`: desktop shell (icons, context menu, taskbar, window chrome, window store).
 - `src/components`: shared UI primitives (Radix UI wrappers) and the Lexical editor used by the Notes app.
-- `public/pdfs`: static PDF assets (used by the PDF viewer).
+- `public/audio` and `public/music`: static audio assets used by the Music app.
+- `public/pdfs`: static PDF assets used by the PDF viewer.
 
 ## Running the project
 
@@ -95,11 +105,13 @@ Use `tests/playwright/registry.ts` as the source of truth for what should be ver
 | `files.open.notes` | Files | Planned | Open a note file from Explorer. |
 | `files.open.pdf` | Files | Planned | Open a PDF file from Explorer. |
 | `files.open.image` | Files | Planned | Open an image file from Explorer. |
-| `files.open.fallback` | Files | Planned | Verify fallback behavior for unsupported file types. |
+| `files.open.audio` | Files | Planned | Open an audio file from Explorer into Music. |
 | `pdf.open` | PDF viewer | Planned | Render the sample PDF. |
 | `pdf.zoom` | PDF viewer | Planned | Zoom the PDF via menu commands. |
 | `photos.empty-state` | Photos | Planned | Show the empty-state view with no image selected. |
 | `photos.file-open` | Photos | Planned | Render an image opened from Explorer. |
+| `music.file-open` | Music | Planned | Open a track from Explorer and start playback automatically. |
+| `browser.navigation` | Browser | Planned | Navigate with the address bar and toolbar controls. |
 | `terminal.help` | Terminal | Planned | Show the supported terminal commands. |
 | `terminal.echo` | Terminal | Planned | Echo custom terminal input. |
 | `personalization.theme.change` | Personalization | Planned | Change the active desktop theme. |
@@ -137,6 +149,14 @@ export const desktopApps = [CalculatorApp /*, ...others */];
    - Assets: place static files in `public` (they’re served at the root).
 
 Icons are positioned with `localStorage` (`desktop-icon-positions`); new apps get a default position, and the desktop context menu can reflow/sort them.
+
+## Current app behavior
+
+- Browser opens project shortcuts for `https://donoud.pages.dev` and `https://yamanalkhashashneh.online`, and supports manual URL entry.
+- Files only lists folders and files that can actually be opened by one of the registered apps.
+- Music supports opening audio files from Files via app file capabilities and starts playback automatically when a track is launched from Explorer.
+- Music uses theme-based gradient styling so the header matches the currently applied desktop theme.
+- Personalization supports theme selection, light/dark mode, built-in backgrounds, and custom background URLs.
 
 ## Personalization & Themes
 

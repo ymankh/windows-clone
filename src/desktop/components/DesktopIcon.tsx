@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { DesktopApp } from "../../apps";
 import { buildAppWindow } from "../../apps/windowBuilder";
 import useWindowsManagerStore from "../stores/WindowsStore";
@@ -71,8 +71,11 @@ const DesktopIcon = ({
     selectedIdsRef.current = selectedIds;
   }, [selectedIds]);
 
-  const persistPosition = (next: { x: number; y: number }, excludedIds: string[] = []) =>
-    persistIconPosition(app.id, next, excludedIds);
+  const persistPosition = useCallback(
+    (next: { x: number; y: number }, excludedIds: string[] = []) =>
+      persistIconPosition(app.id, next, excludedIds),
+    [app.id]
+  );
 
   const applySortedPosition = useEffectEvent(() => {
     if (!sortVersion) return;
@@ -141,7 +144,7 @@ const DesktopIcon = ({
       window.removeEventListener(GROUP_DRAG_MOVE_EVENT, onGroupDragMove as EventListener);
       window.removeEventListener(GROUP_DRAG_END_EVENT, onGroupDragEnd as EventListener);
     };
-  }, [app.id]);
+  }, [app.id, persistPosition]);
 
   if (hidden) return null;
 

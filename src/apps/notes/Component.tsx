@@ -39,6 +39,18 @@ const toSerializedStateFromText = (text: string): SerializedEditorState =>
 
 const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentProps) => {
   const initialSerializedState = useMemo(() => {
+    if (fileContext?.type === "notes") {
+      const parsed = notesFileDataSchema.safeParse(fileContext.data);
+      if (parsed.success) {
+        if (parsed.data.serialized && typeof parsed.data.serialized === "object") {
+          return parsed.data.serialized as SerializedEditorState;
+        }
+        if (typeof parsed.data.text === "string") {
+          return toSerializedStateFromText(parsed.data.text);
+        }
+      }
+    }
+
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return undefined;
     try {
@@ -46,7 +58,7 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
     } catch {
       return undefined;
     }
-  }, []);
+  }, [fileContext]);
 
   const [serialized, setSerialized] = useState<SerializedEditorState | undefined>(
     initialSerializedState
@@ -56,22 +68,6 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
     if (!serialized) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
   }, [serialized]);
-
-  useEffect(() => {
-    if (!fileContext || fileContext.type !== "notes") return;
-    const parsed = notesFileDataSchema.safeParse(fileContext.data);
-    if (!parsed.success) return;
-    const payload = parsed.data;
-
-    if (payload.serialized && typeof payload.serialized === "object") {
-      setSerialized(payload.serialized as SerializedEditorState);
-      return;
-    }
-
-    if (typeof payload.text === "string") {
-      setSerialized(toSerializedStateFromText(payload.text));
-    }
-  }, [fileContext]);
 
   useEffect(() => {
     const handleCommand = (event: Event) => {

@@ -1,4 +1,10 @@
-import type { ComponentType, MouseEvent, ReactNode, SVGProps } from "react";
+import type {
+  ComponentType,
+  MouseEvent,
+  PointerEventHandler,
+  ReactNode,
+  SVGProps,
+} from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, Minus, Square, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -11,6 +17,12 @@ type WindowProps = {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   children: ReactNode;
 };
+
+type DockTarget = "left" | "right" | "top" | null;
+type WindowLayoutMode = "normal" | "maximized" | "docked-left" | "docked-right";
+
+const TASKBAR_HEIGHT = 56;
+const DOCK_EDGE_THRESHOLD = 32;
 
 const Window = ({ id, title, icon, children }: WindowProps) => {
   const windowData = useWindowsManagerStore((state) =>
@@ -25,8 +37,11 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   const updateWindowBounds = useWindowsManagerStore(
     (state) => state.updateWindowBounds
   );
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<WindowLayoutMode>("normal");
   const [isClosing, setIsClosing] = useState(false);
+  const [dockPreview, setDockPreview] = useState<DockTarget>(null);
+  const minWidth = 320;
+  const minHeight = 220;
   const previousBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(
     null
   );
@@ -34,6 +49,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   const windowRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef({
     dragging: false,
+    pointerId: -1,
+    pointerTarget: null as HTMLDivElement | null,
     startX: 0,
     startY: 0,
     originX: 0,
@@ -57,6 +74,62 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   const stop: React.MouseEventHandler = (event: MouseEvent) =>
     event.stopPropagation();
 
+  const getDesktopBounds = useCallback(() => {
+    const viewportWidth =
+      window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight || 0;
+    return {
+      width: viewportWidth,
+      height: Math.max(0, viewportHeight - TASKBAR_HEIGHT),
+    };
+  }, []);
+
+  const getDockTarget = useCallback(
+    (pointerX: number, pointerY: number): DockTarget => {
+      const { width } = getDesktopBounds();
+      if (pointerY <= DOCK_EDGE_THRESHOLD) return "top";
+      if (pointerX <= DOCK_EDGE_THRESHOLD) return "left";
+      if (pointerX >= width - DOCK_EDGE_THRESHOLD) return "right";
+      return null;
+    },
+    [getDesktopBounds]
+  );
+
+  const applyDock = useCallback(
+    (target: Exclude<DockTarget, null>) => {
+      if (!windowData) return;
+      const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
+      previousBoundsRef.current = {
+        x: windowData.x,
+        y: windowData.y,
+        width: windowData.width,
+        height: windowData.height,
+      };
+
+      if (target === "top") {
+        updateWindowBounds(id, {
+          x: 0,
+          y: 0,
+          width: Math.max(minWidth, viewportWidth),
+          height: Math.max(minHeight, desktopHeight),
+        });
+        setLayoutMode("maximized");
+        return;
+      }
+
+      const dockedWidth = Math.max(minWidth, Math.floor(viewportWidth / 2));
+      updateWindowBounds(id, {
+        x: target === "left" ? 0 : Math.max(0, viewportWidth - dockedWidth),
+        y: 0,
+        width: dockedWidth,
+        height: Math.max(minHeight, desktopHeight),
+      });
+      setLayoutMode(target === "left" ? "docked-left" : "docked-right");
+    },
+    [getDesktopBounds, id, minHeight, minWidth, updateWindowBounds, windowData]
+  );
+
   const handlePointerMove = useCallback(
     (event: PointerEvent) => {
       if (!dragState.current.dragging) return;
@@ -72,52 +145,106 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         dragState.current.maxY
       );
       updateWindowPosition(id, nextX, nextY);
+      setDockPreview(getDockTarget(event.clientX, event.clientY));
     },
-    [id, updateWindowPosition]
+    [getDockTarget, id, updateWindowPosition]
   );
 
-  const handlePointerUp = useCallback(() => {
+  const resetDragState = useCallback(() => {
     dragState.current.dragging = false;
-    window.removeEventListener("pointermove", handlePointerMove);
-  }, [handlePointerMove]);
+    dragState.current.pointerId = -1;
+    dragState.current.pointerTarget = null;
+    setDockPreview(null);
+  }, []);
 
-  useEffect(
-    () => () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-    },
-    [handlePointerMove, handlePointerUp]
-  );
+  const handlePointerUp = useCallback((event: PointerEvent) => {
+    const dockTarget = getDockTarget(event.clientX, event.clientY);
+    if (dragState.current.dragging && dockTarget) {
+      applyDock(dockTarget);
+    }
+    if (
+      dragState.current.pointerTarget &&
+      dragState.current.pointerId >= 0 &&
+      dragState.current.pointerTarget.hasPointerCapture(dragState.current.pointerId)
+    ) {
+      dragState.current.pointerTarget.releasePointerCapture(dragState.current.pointerId);
+    }
+    resetDragState();
+  }, [applyDock, getDockTarget, resetDragState]);
 
-  const minWidth = 320;
-  const minHeight = 220;
+  const handleDragPointerMove: PointerEventHandler<HTMLDivElement> = (event) => {
+    handlePointerMove(event.nativeEvent);
+  };
+
+  const handleDragPointerUp: PointerEventHandler<HTMLDivElement> = (event) => {
+    handlePointerUp(event.nativeEvent);
+  };
+
+  const handleDragPointerCancel: PointerEventHandler<HTMLDivElement> = () => {
+    resetDragState();
+  };
 
   const startDrag: React.PointerEventHandler<HTMLDivElement> = (event) => {
-    if (event.button !== 0 || isMaximized) return;
+    if (event.button !== 0) return;
+    if (
+      event.target instanceof Element &&
+      event.target.closest("button, [data-no-drag='true']")
+    ) {
+      return;
+    }
     handleFocus();
+    setDockPreview(null);
     event.preventDefault();
     const viewportWidth =
       window.innerWidth || document.documentElement.clientWidth || 0;
     const viewportHeight =
       window.innerHeight || document.documentElement.clientHeight || 0;
-    const width = windowData.width;
-    const height = windowData.height;
+    let baseX = windowData.x;
+    let baseY = windowData.y;
+    let width = windowData.width;
+    let height = windowData.height;
+
+    if (layoutMode !== "normal") {
+      const fallback = {
+        x: Math.max(0, Math.floor((viewportWidth - minWidth) / 2)),
+        y: 64,
+        width: Math.max(minWidth, Math.floor(viewportWidth * 0.7)),
+        height: Math.max(minHeight, Math.floor((viewportHeight - TASKBAR_HEIGHT) * 0.7)),
+      };
+      const restored = previousBoundsRef.current ?? fallback;
+      width = restored.width;
+      height = restored.height;
+      const pointerRatioX =
+        windowData.width > 0 ? (event.clientX - windowData.x) / windowData.width : 0.5;
+      const clampedPointerRatioX = Math.min(Math.max(pointerRatioX, 0.15), 0.85);
+      baseX = Math.round(event.clientX - width * clampedPointerRatioX);
+      baseY = Math.round(event.clientY - Math.min(28, event.clientY - windowData.y));
+      baseX = Math.min(Math.max(0, baseX), Math.max(0, viewportWidth - width));
+      baseY = Math.min(
+        Math.max(0, baseY),
+        Math.max(0, viewportHeight - TASKBAR_HEIGHT - height)
+      );
+      updateWindowBounds(id, { x: baseX, y: baseY, width, height });
+      setLayoutMode("normal");
+    }
+
     dragState.current = {
       dragging: true,
+      pointerId: event.pointerId,
+      pointerTarget: event.currentTarget,
       startX: event.clientX,
       startY: event.clientY,
-      originX: windowData.x,
-      originY: windowData.y,
+      originX: baseX,
+      originY: baseY,
       maxX: Math.max(0, viewportWidth - width),
-      maxY: Math.max(0, viewportHeight - height),
+      maxY: Math.max(0, viewportHeight - TASKBAR_HEIGHT - height),
     };
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp, { once: true });
+    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const handleResizeMove = useCallback(
     (event: PointerEvent) => {
-      if (!resizeState.current.resizing || isMaximized) return;
+      if (!resizeState.current.resizing || layoutMode !== "normal") return;
       event.preventDefault();
       const viewportWidth =
         window.innerWidth || document.documentElement.clientWidth || 0;
@@ -166,7 +293,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
           resizeState.current.startHeight +
           (resizeState.current.startPosY - newY);
       } else {
-        const maxHeight = viewportHeight - resizeState.current.startPosY;
+        const maxHeight =
+          viewportHeight - TASKBAR_HEIGHT - resizeState.current.startPosY;
         newHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
       }
 
@@ -177,7 +305,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         height: Math.round(newHeight),
       });
     },
-    [id, isMaximized, minHeight, minWidth, updateWindowBounds]
+    [id, layoutMode, minHeight, minWidth, updateWindowBounds]
   );
 
   const handleResizeUp = useCallback(() => {
@@ -197,7 +325,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     edgeX: "left" | "right",
     edgeY: "top" | "bottom"
   ): React.PointerEventHandler<HTMLDivElement> => (event) => {
-    if (isMaximized || !windowData) return;
+    if (layoutMode !== "normal" || !windowData) return;
     event.stopPropagation();
     event.preventDefault();
     handleFocus();
@@ -217,27 +345,23 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   };
 
   const applyMaximizeBounds = useCallback(() => {
-    const taskbarHeight = 56; // matches Taskbar height (h-14)
-    const viewportWidth =
-      window.innerWidth || document.documentElement.clientWidth || 0;
-    const viewportHeight =
-      window.innerHeight || document.documentElement.clientHeight || 0;
+    const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
     const nextWidth = Math.max(minWidth, viewportWidth);
-    const nextHeight = Math.max(minHeight, viewportHeight - taskbarHeight);
+    const nextHeight = Math.max(minHeight, desktopHeight);
     updateWindowBounds(id, {
       x: 0,
       y: 0,
       width: nextWidth,
       height: nextHeight,
     });
-  }, [id, minHeight, minWidth, updateWindowBounds]);
+  }, [getDesktopBounds, id, minHeight, minWidth, updateWindowBounds]);
 
   const toggleMaximize = useCallback(() => {
     if (!windowData) return;
-    if (isMaximized && previousBoundsRef.current) {
+    if (layoutMode === "maximized" && previousBoundsRef.current) {
       const { x, y, width, height } = previousBoundsRef.current;
       updateWindowBounds(id, { x, y, width, height });
-      setIsMaximized(false);
+      setLayoutMode("normal");
       return;
     }
     previousBoundsRef.current = {
@@ -247,15 +371,15 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
       height: windowData.height,
     };
     applyMaximizeBounds();
-    setIsMaximized(true);
-  }, [applyMaximizeBounds, id, isMaximized, updateWindowBounds, windowData]);
+    setLayoutMode("maximized");
+  }, [applyMaximizeBounds, id, layoutMode, updateWindowBounds, windowData]);
 
   useEffect(() => {
-    if (!isMaximized) return;
+    if (layoutMode !== "maximized") return;
     const handleResize = () => applyMaximizeBounds();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [applyMaximizeBounds, isMaximized]);
+  }, [applyMaximizeBounds, layoutMode]);
 
   if (!windowData && !isClosing) return null;
 
@@ -267,35 +391,58 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
       }}
     >
       {!isClosing && windowData ? (
-        <motion.div
-          key={id}
-          layout
-          initial={{ opacity: 0, scale: 0.95, y: 12 }}
-          animate={{
-            opacity: 1,
-            scale: 1,
-            y: 0,
-          }}
-          exit={{ opacity: 0, scale: 0.92, y: 16 }}
-          transition={{
-            layout: { duration: 0.25, ease: [0.22, 0.8, 0.36, 1] },
-            duration: 0.18,
-            ease: [0.22, 0.8, 0.36, 1],
-          }}
-          className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
-          style={{
-            zIndex: windowData.zIndex,
-            left: windowData.x,
-            top: windowData.y,
-            width: windowData.width,
-            height: windowData.height,
-          }}
-          onMouseDown={handleFocus}
-          ref={windowRef}
-        >
+        <>
+          {dockPreview ? (
+            <div
+              className="pointer-events-none fixed z-[9998] border border-primary/70 bg-primary/15"
+              style={(() => {
+                const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
+                if (dockPreview === "top") {
+                  return { left: 0, top: 0, width: viewportWidth, height: desktopHeight };
+                }
+                const dockedWidth = Math.max(minWidth, Math.floor(viewportWidth / 2));
+                return {
+                  left: dockPreview === "left" ? 0 : Math.max(0, viewportWidth - dockedWidth),
+                  top: 0,
+                  width: dockedWidth,
+                  height: desktopHeight,
+                };
+              })()}
+            />
+          ) : null}
+          <motion.div
+            key={id}
+            layout
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+            }}
+            exit={{ opacity: 0, scale: 0.92, y: 16 }}
+            transition={{
+              layout: { duration: 0.25, ease: [0.22, 0.8, 0.36, 1] },
+              duration: 0.18,
+              ease: [0.22, 0.8, 0.36, 1],
+            }}
+            className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
+            style={{
+              zIndex: windowData.zIndex,
+              left: windowData.x,
+              top: windowData.y,
+              width: windowData.width,
+              height: windowData.height,
+            }}
+            onMouseDown={handleFocus}
+            ref={windowRef}
+          >
           <div
             className="flex cursor-move items-center justify-between bg-muted px-3 py-2 text-sm font-semibold select-none"
             onPointerDown={startDrag}
+            onPointerMove={handleDragPointerMove}
+            onPointerUp={handleDragPointerUp}
+            onPointerCancel={handleDragPointerCancel}
+            onLostPointerCapture={handleDragPointerCancel}
           >
             <span className="flex items-center gap-2 truncate">
               <span className="text-muted-foreground">
@@ -306,9 +453,10 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               </span>
               <span className="truncate">{windowData.title || title}</span>
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-no-drag="true">
               <button
                 type="button"
+                data-no-drag="true"
                 className="p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
                 onClick={(event) => {
                   stop(event);
@@ -320,17 +468,19 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               </button>
               <button
                 type="button"
+                data-no-drag="true"
                 className="p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
                 onClick={(event) => {
                   stop(event);
                   toggleMaximize();
                 }}
-                aria-label={isMaximized ? "Restore" : "Maximize"}
+                aria-label={layoutMode === "maximized" ? "Restore" : "Maximize"}
               >
-                {isMaximized ? <Copy size={14} /> : <Square size={14} />}
+                {layoutMode === "maximized" ? <Copy size={14} /> : <Square size={14} />}
               </button>
               <button
                 type="button"
+                data-no-drag="true"
                 className="p-1 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
                 onClick={(event) => {
                   stop(event);
@@ -370,7 +520,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               onPointerDown={startResize("right", "bottom")}
             />
           </div>
-        </motion.div>
+          </motion.div>
+        </>
       ) : null}
     </AnimatePresence>
   );

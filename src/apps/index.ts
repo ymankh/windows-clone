@@ -1,3 +1,4 @@
+import { BrowserApp } from "./browser";
 import { FilesApp } from "./files";
 import { MusicApp } from "./music";
 import { NotesApp } from "./notes";
@@ -6,6 +7,7 @@ import { TerminalApp } from "./terminal";
 import { PdfApp } from "./pdf";
 
 export const desktopApps = [
+  BrowserApp,
   NotesApp,
   MusicApp,
   PhotosApp,

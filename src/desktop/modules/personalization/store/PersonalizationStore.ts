@@ -1,14 +1,11 @@
 import { create } from "zustand";
-import useThemeStore from "./ThemeStore";
 
 type CustomBackground = { id: string; name: string; url: string };
 
 type PersonalizationStore = {
-  pendingThemeId: string;
   customBackgrounds: CustomBackground[];
   bgName: string;
   bgUrl: string;
-  setPendingThemeId: (id: string) => void;
   setBgName: (value: string) => void;
   setBgUrl: (value: string) => void;
   addCustomBackground: () => CustomBackground | null;
@@ -36,11 +33,9 @@ const persistCustomBackgrounds = (items: CustomBackground[]) => {
 };
 
 const usePersonalizationStore = create<PersonalizationStore>((set, get) => ({
-  pendingThemeId: useThemeStore.getState().themeId,
   customBackgrounds: loadCustomBackgrounds(),
   bgName: "",
   bgUrl: "",
-  setPendingThemeId: (id) => set({ pendingThemeId: id }),
   setBgName: (value) => set({ bgName: value }),
   setBgUrl: (value) => set({ bgUrl: value }),
   addCustomBackground: () => {

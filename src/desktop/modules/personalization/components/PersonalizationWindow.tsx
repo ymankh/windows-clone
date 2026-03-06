@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { themes } from "../../../themes";
 import { backgrounds } from "../../../backgrounds";
 import useThemeStore from "../store/ThemeStore";
@@ -9,11 +9,8 @@ import usePersonalizationStore from "../store/PersonalizationStore";
 import PersonalizationFooter from "./PersonalizationFooter";
 
 const PersonalizationWindow = () => {
-  const { themeId } = useThemeStore();
-  const { backgroundUrl, setBackground } = useThemeStore();
+  const { themeId, setTheme, backgroundUrl, setBackground } = useThemeStore();
   const {
-    pendingThemeId,
-    setPendingThemeId,
     customBackgrounds,
     bgName,
     bgUrl,
@@ -35,10 +32,6 @@ const PersonalizationWindow = () => {
     [customBackgrounds]
   );
 
-  useEffect(() => {
-    setPendingThemeId(themeId);
-  }, [themeId, setPendingThemeId]);
-
   return (
     <div className="flex h-full flex-col bg-[radial-gradient(circle_at_10%_10%,rgba(255,255,255,0.08),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(0,0,0,0.08),transparent_28%)] p-6">
       <PersonalizationHeader />
@@ -46,8 +39,8 @@ const PersonalizationWindow = () => {
       <div className="flex flex-1 min-h-0 flex-col gap-6 overflow-auto pr-1">
         <ThemeSection
           themes={themes}
-          activeThemeId={pendingThemeId}
-          onSelect={setPendingThemeId}
+          activeThemeId={themeId}
+          onSelect={setTheme}
         />
 
         <BackgroundSection

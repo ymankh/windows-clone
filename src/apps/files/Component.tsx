@@ -1,4 +1,4 @@
-import { FileArchive, FileText, Folder as FolderIcon, Image as ImageIcon, Music } from "lucide-react";
+import { FileText, Folder as FolderIcon, Image as ImageIcon, Music } from "lucide-react";
 import { type TreeDataItem } from "@/components/tree-view";
 import { Split } from "@/components/ui/split";
 import { FilesGrid } from "./componsnts/FilesGrid";
@@ -171,48 +171,33 @@ const folderContents: Record<string, FolderItem[]> = {
   ],
   music: [
     {
-      name: "Playlist.m3u",
+      name: "Moavii - Foreign (freetouse.com).mp3",
       type: "file",
       fileType: "audio",
-      meta: "4 KB",
+      meta: "5.1 MB",
       icon: Music,
-      data: { url: "/audio/demo.mp3", title: "Playlist" },
+      data: {
+        url: "/music/Moavii - Foreign (freetouse.com).mp3",
+        title: "Foreign",
+        artist: "Moavii",
+      },
     },
     {
-      name: "Demo.mp3",
+      name: "Demo.wav",
       type: "file",
       fileType: "audio",
-      meta: "8.2 MB",
+      meta: "273 KB",
       icon: Music,
-      data: { url: "/audio/demo.mp3", title: "Demo" },
+      data: {
+        url: "/audio/demo.wav",
+        title: "Demo Track",
+        artist: "Public Library",
+      },
     },
   ],
   downloads: [
-    {
-      name: "release.zip",
-      type: "file",
-      fileType: "archive",
-      meta: "24 MB",
-      icon: FileArchive,
-      data: { entries: ["README.md", "dist/app.exe"] },
-    },
-    {
-      name: "setup.exe",
-      type: "file",
-      fileType: "binary",
-      meta: "52 MB",
-      data: { bytes: 52 * 1024 * 1024 },
-    },
   ],
   archive: [
-    {
-      name: "2019-backup.zip",
-      type: "file",
-      fileType: "archive",
-      meta: "110 MB",
-      icon: FileArchive,
-      data: { entries: ["old-notes.txt", "photos/"] },
-    },
     {
       name: "old-notes.txt",
       type: "file",

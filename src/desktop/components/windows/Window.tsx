@@ -60,8 +60,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   });
   const resizeState = useRef({
     resizing: false,
-    edgeX: "right" as "left" | "right",
-    edgeY: "bottom" as "top" | "bottom",
+    edgeX: null as "left" | "right" | null,
+    edgeY: null as "top" | "bottom" | null,
     startX: 0,
     startY: 0,
     startWidth: 0,
@@ -259,11 +259,15 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
       let newWidth =
         resizeState.current.edgeX === "right"
           ? resizeState.current.startWidth + deltaX
-          : resizeState.current.startWidth - deltaX;
+          : resizeState.current.edgeX === "left"
+            ? resizeState.current.startWidth - deltaX
+            : resizeState.current.startWidth;
       let newHeight =
         resizeState.current.edgeY === "bottom"
           ? resizeState.current.startHeight + deltaY
-          : resizeState.current.startHeight - deltaY;
+          : resizeState.current.edgeY === "top"
+            ? resizeState.current.startHeight - deltaY
+            : resizeState.current.startHeight;
 
       if (resizeState.current.edgeX === "left") {
         const maxLeftShift =
@@ -276,7 +280,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         newWidth =
           resizeState.current.startWidth +
           (resizeState.current.startPosX - newX);
-      } else {
+      } else if (resizeState.current.edgeX === "right") {
         const maxWidth = viewportWidth - resizeState.current.startPosX;
         newWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
       }
@@ -292,7 +296,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         newHeight =
           resizeState.current.startHeight +
           (resizeState.current.startPosY - newY);
-      } else {
+      } else if (resizeState.current.edgeY === "bottom") {
         const maxHeight =
           viewportHeight - TASKBAR_HEIGHT - resizeState.current.startPosY;
         newHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
@@ -322,8 +326,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   );
 
   const startResize = (
-    edgeX: "left" | "right",
-    edgeY: "top" | "bottom"
+    edgeX: "left" | "right" | null,
+    edgeY: "top" | "bottom" | null
   ): React.PointerEventHandler<HTMLDivElement> => (event) => {
     if (layoutMode !== "normal" || !windowData) return;
     event.stopPropagation();
@@ -503,6 +507,22 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
           )}
 
           <div className="pointer-events-none absolute inset-0">
+            <div
+              className="pointer-events-auto absolute inset-y-3 left-0 w-2 cursor-ew-resize"
+              onPointerDown={startResize("left", null)}
+            />
+            <div
+              className="pointer-events-auto absolute inset-y-3 right-0 w-2 cursor-ew-resize"
+              onPointerDown={startResize("right", null)}
+            />
+            <div
+              className="pointer-events-auto absolute inset-x-3 top-0 h-2 cursor-ns-resize"
+              onPointerDown={startResize(null, "top")}
+            />
+            <div
+              className="pointer-events-auto absolute inset-x-3 bottom-0 h-2 cursor-ns-resize"
+              onPointerDown={startResize(null, "bottom")}
+            />
             <div
               className="pointer-events-auto absolute left-0 top-0 h-3 w-3 cursor-nwse-resize"
               onPointerDown={startResize("left", "top")}

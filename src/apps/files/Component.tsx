@@ -278,10 +278,13 @@ const FilesComponent = () => {
   const openApp = (appId: string, file: FileEntry) => {
     const app = appRegistry.get(appId);
     if (!app) return;
-    const windowId = toAppInstanceId(
-      app.id,
-      `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    );
+    const windowId =
+      app.id === "music"
+        ? app.id
+        : toAppInstanceId(
+            app.id,
+            `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+          );
     openWindow(
       buildAppWindow(app, {
         windowId,

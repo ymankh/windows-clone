@@ -13,12 +13,13 @@ type QuickLink = {
   url: string;
 };
 
-const HOME_URL = "https://example.com";
-
-const QUICK_LINKS: QuickLink[] = [
+const QUICK_LINKS = [
   { label: "Donoud", url: "https://donoud.pages.dev" },
   { label: "Portfolio", url: "https://yamanalkhashashneh.online" },
-];
+] as const satisfies ReadonlyArray<QuickLink>;
+
+const HOME_URL = QUICK_LINKS[0].url;
+
 
 const normalizeUrl = (value: string) => {
   const trimmed = value.trim();
@@ -30,7 +31,7 @@ const normalizeUrl = (value: string) => {
 const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => {
   const [history, setHistory] = useState<string[]>([HOME_URL]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [address, setAddress] = useState(HOME_URL);
+  const [address, setAddress] = useState<string>(HOME_URL);
   const [iframeKey, setIframeKey] = useState(0);
 
   const currentUrl = history[historyIndex] ?? HOME_URL;

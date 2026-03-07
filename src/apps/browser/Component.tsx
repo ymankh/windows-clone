@@ -6,6 +6,7 @@ import {
   Home,
   RefreshCcw,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { AppWindowComponentProps } from "../types";
 
 type QuickLink = {
@@ -100,10 +101,12 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       <div className="border-b border-border bg-card/90 p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <button
+          <Button
             type="button"
-            className="rounded-md border border-border bg-background p-2 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+            variant="outline"
+            size="icon"
             disabled={!canGoBack}
+            aria-label="Back"
             onClick={() => {
               const nextIndex = Math.max(0, historyIndex - 1);
               setHistoryIndex(nextIndex);
@@ -111,11 +114,13 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
             }}
           >
             <ArrowLeft className="h-4 w-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="rounded-md border border-border bg-background p-2 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+            variant="outline"
+            size="icon"
             disabled={!canGoForward}
+            aria-label="Forward"
             onClick={() => {
               const nextIndex = Math.min(history.length - 1, historyIndex + 1);
               setHistoryIndex(nextIndex);
@@ -123,21 +128,25 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
             }}
           >
             <ArrowRight className="h-4 w-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="rounded-md border border-border bg-background p-2 hover:bg-muted"
+            variant="outline"
+            size="icon"
+            aria-label="Reload"
             onClick={() => setIframeKey((value) => value + 1)}
           >
             <RefreshCcw className="h-4 w-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="rounded-md border border-border bg-background p-2 hover:bg-muted"
+            variant="outline"
+            size="icon"
+            aria-label="Home"
             onClick={() => navigateTo(HOME_URL)}
           >
             <Home className="h-4 w-4" />
-          </button>
+          </Button>
 
           <form
             className="flex min-w-0 flex-1 items-center gap-2"
@@ -155,25 +164,23 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
                 placeholder="Enter a URL"
               />
             </div>
-            <button
-              type="submit"
-              className="rounded-md border border-primary bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"
-            >
+            <Button type="submit">
               Go
-            </button>
+            </Button>
           </form>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
           {quickLinks.map((link) => (
-            <button
+            <Button
               key={link.url}
               type="button"
-              className="rounded-full border border-border bg-background px-3 py-1 text-xs hover:bg-muted"
+              variant="outline"
+              size="sm"
               onClick={() => navigateTo(link.url)}
             >
               {link.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>

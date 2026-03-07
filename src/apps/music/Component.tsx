@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, SkipBack, SkipForward, Trash2, Volume2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { AppWindowComponentProps } from "../types";
 import { audioFileDataSchema } from "./schema";
 import useMusicStore from "./store";
@@ -178,9 +179,10 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
                   {hasTracks ? `${tracks.length} tracks` : "Empty"}
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                variant="outline"
+                size="sm"
                 disabled={!hasTracks}
                 onClick={() => {
                   pendingAutoplayRef.current = false;
@@ -192,7 +194,7 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Clear list
-              </button>
+              </Button>
             </div>
 
             {hasTracks ? (
@@ -236,9 +238,10 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
           <div className="flex items-center justify-between text-sm font-medium">
             <span>Controls</span>
             {isCompact && hasTracks ? (
-              <button
+              <Button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs hover:bg-muted"
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   pendingAutoplayRef.current = false;
                   clearTracks();
@@ -249,15 +252,17 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Clear list
-              </button>
+              </Button>
             ) : null}
           </div>
 
           <div className="mt-5 flex items-center justify-center gap-3">
-            <button
+            <Button
               type="button"
-              className="rounded-md border border-border bg-background p-3 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+              variant="outline"
+              size="icon-lg"
               disabled={tracks.length < 2}
+              aria-label="Previous track"
               onClick={() => {
                 pendingAutoplayRef.current = false;
                 setCurrentTime(0);
@@ -266,19 +271,22 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
               }}
             >
               <SkipBack className="h-4 w-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="rounded-md border border-primary bg-primary px-5 py-3 text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              size="icon-lg"
               disabled={!currentTrack}
+              aria-label={isPlaying ? "Pause" : "Play"}
               onClick={() => setIsPlaying((value) => !value)}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="rounded-md border border-border bg-background p-3 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+              variant="outline"
+              size="icon-lg"
               disabled={tracks.length < 2}
+              aria-label="Next track"
               onClick={() => {
                 pendingAutoplayRef.current = false;
                 setCurrentTime(0);
@@ -287,7 +295,7 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
               }}
             >
               <SkipForward className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
 
           <div className="mt-6">

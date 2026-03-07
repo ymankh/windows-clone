@@ -1,5 +1,6 @@
 import { Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type BackgroundEntry = { id: string; name: string; description: string; url: string };
 
@@ -65,14 +66,14 @@ const BackgroundSection = ({
     <div className="rounded-xl border border-border/70 bg-card/70 p-4 shadow-sm">
       <p className="mb-3 text-sm font-semibold text-foreground">Add custom background</p>
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <input
-          className="flex-1 rounded-md border border-border/70 bg-background px-3 py-2 text-sm text-foreground outline-none ring-0 focus:border-primary focus:ring-2 focus:ring-primary/30"
+        <Input
+          className="flex-1"
           placeholder="Name (optional)"
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
         />
-        <input
-          className="flex-[2] rounded-md border border-border/70 bg-background px-3 py-2 text-sm text-foreground outline-none ring-0 focus:border-primary focus:ring-2 focus:ring-primary/30"
+        <Input
+          className="flex-[2]"
           placeholder="Image URL (required)"
           value={url}
           onChange={(e) => onUrlChange(e.target.value)}

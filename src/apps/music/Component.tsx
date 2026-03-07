@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, SkipBack, SkipForward, Trash2, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import type { AppWindowComponentProps } from "../types";
 import { audioFileDataSchema } from "./schema";
 import useMusicStore from "./store";
@@ -299,15 +300,14 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
           </div>
 
           <div className="mt-6">
-            <input
-              type="range"
+            <Slider
               min={0}
               max={duration || 1}
               step={0.1}
-              value={Math.min(currentTrack ? currentTime : 0, currentTrack ? duration : 0)}
-              className="w-full accent-primary"
-              onChange={(event) => {
-                const nextTime = Number(event.target.value);
+              value={[Math.min(currentTrack ? currentTime : 0, currentTrack ? duration : 0)]}
+              disabled={!currentTrack}
+              aria-label="Playback position"
+              onValueChange={([nextTime = 0]) => {
                 setCurrentTime(nextTime);
                 if (audioRef.current) {
                   audioRef.current.currentTime = nextTime;
@@ -325,14 +325,13 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
               <Volume2 className="h-4 w-4" />
               Volume
             </div>
-            <input
-              type="range"
+            <Slider
               min={0}
               max={1}
               step={0.01}
-              value={volume}
-              className="w-full accent-primary"
-              onChange={(event) => setVolume(Number(event.target.value))}
+              value={[volume]}
+              aria-label="Volume"
+              onValueChange={([nextVolume = 0]) => setVolume(nextVolume)}
             />
           </label>
         </section>

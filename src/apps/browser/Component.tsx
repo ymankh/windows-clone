@@ -7,6 +7,7 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { AppWindowComponentProps } from "../types";
 
 type QuickLink = {
@@ -103,7 +104,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="icon"
             disabled={!canGoBack}
             aria-label="Back"
@@ -117,7 +118,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="icon"
             disabled={!canGoForward}
             aria-label="Forward"
@@ -131,7 +132,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="icon"
             aria-label="Reload"
             onClick={() => setIframeKey((value) => value + 1)}
@@ -140,7 +141,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="icon"
             aria-label="Home"
             onClick={() => navigateTo(HOME_URL)}
@@ -157,10 +158,10 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
           >
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-background px-3">
               <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <input
+              <Input
                 value={address}
                 onChange={(event) => setAddress(event.target.value)}
-                className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none"
+                className="h-10 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
                 placeholder="Enter a URL"
               />
             </div>
@@ -175,7 +176,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
             <Button
               key={link.url}
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => navigateTo(link.url)}
             >

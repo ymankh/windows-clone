@@ -3,6 +3,7 @@ import * as MenubarPrimitive from "@radix-ui/react-menubar"
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { MenuItemVariants, type MenuItemVariant } from "./menuItemVariants"
 
 function Menubar({
   className,
@@ -89,11 +90,11 @@ function MenubarContent({
 function MenubarItem({
   className,
   inset,
-  variant = "default",
+  variant = MenuItemVariants.default,
   ...props
 }: React.ComponentProps<typeof MenubarPrimitive.Item> & {
   inset?: boolean
-  variant?: "default" | "destructive"
+  variant?: MenuItemVariant
 }) {
   return (
     <MenubarPrimitive.Item

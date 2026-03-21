@@ -1,6 +1,8 @@
 import { FileText } from "lucide-react";
 import type { DesktopApp } from "../types";
+import { FileTypes } from "../fileTypes";
 import NotesComponent from "./Component";
+import { NotesEditorActions, NotesFileActions } from "./constants";
 import { notesFileDataSchema } from "./schema";
 
 const createNotesMenubar = (windowId: string) => {
@@ -16,7 +18,7 @@ const createNotesMenubar = (windowId: string) => {
           onSelect: () =>
             window.dispatchEvent(
               new CustomEvent("notes-editor-command", {
-                detail: { action: "clear", windowId },
+                detail: { action: NotesEditorActions.clear, windowId },
               })
             ),
         },
@@ -31,7 +33,7 @@ const createNotesMenubar = (windowId: string) => {
           onSelect: () =>
             window.dispatchEvent(
               new CustomEvent("notes-file-command", {
-                detail: { action: "save-md", windowId },
+                detail: { action: NotesFileActions.saveMd, windowId },
               })
             ),
         },
@@ -46,7 +48,7 @@ const createNotesMenubar = (windowId: string) => {
           onSelect: () =>
             window.dispatchEvent(
               new CustomEvent("notes-editor-command", {
-                detail: { action: "undo", windowId },
+                detail: { action: NotesEditorActions.undo, windowId },
               })
             ),
         },
@@ -56,7 +58,7 @@ const createNotesMenubar = (windowId: string) => {
           onSelect: () =>
             window.dispatchEvent(
               new CustomEvent("notes-editor-command", {
-                detail: { action: "redo", windowId },
+                detail: { action: NotesEditorActions.redo, windowId },
               })
             ),
         },
@@ -71,7 +73,7 @@ const createNotesMenubar = (windowId: string) => {
           onSelect: () =>
             window.dispatchEvent(
               new CustomEvent("notes-editor-command", {
-                detail: { action: "bold", windowId },
+                detail: { action: NotesEditorActions.bold, windowId },
               })
             ),
         },
@@ -81,7 +83,7 @@ const createNotesMenubar = (windowId: string) => {
           onSelect: () =>
             window.dispatchEvent(
               new CustomEvent("notes-editor-command", {
-                detail: { action: "italic", windowId },
+                detail: { action: NotesEditorActions.italic, windowId },
               })
             ),
         },
@@ -91,7 +93,7 @@ const createNotesMenubar = (windowId: string) => {
           onSelect: () =>
             window.dispatchEvent(
               new CustomEvent("notes-editor-command", {
-                detail: { action: "underline", windowId },
+                detail: { action: NotesEditorActions.underline, windowId },
               })
             ),
         },
@@ -106,5 +108,5 @@ export const NotesApp: DesktopApp = {
   icon: FileText,
   Component: NotesComponent,
   createMenubar: createNotesMenubar,
-  fileCapabilities: [{ fileType: "notes", schema: notesFileDataSchema }],
+  fileCapabilities: [{ fileType: FileTypes.notes, schema: notesFileDataSchema }],
 };

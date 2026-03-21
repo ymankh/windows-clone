@@ -6,6 +6,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { MenuItemVariants } from "@/components/ui/menuItemVariants";
 
 type DesktopIconMenuProps = {
   onOpen: () => void;
@@ -20,7 +21,10 @@ const DesktopIconMenu = ({ onOpen, onDelete, children }: DesktopIconMenuProps) =
       <ContextMenuContent>
         <ContextMenuItem onSelect={onOpen}>Open</ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem variant="destructive" onSelect={onDelete}>
+        <ContextMenuItem
+          variant={MenuItemVariants.destructive}
+          onSelect={onDelete}
+        >
           Delete
         </ContextMenuItem>
       </ContextMenuContent>

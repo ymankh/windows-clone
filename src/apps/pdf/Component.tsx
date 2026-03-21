@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { AppWindowComponentProps } from "../types";
+import { FileTypes } from "../fileTypes";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { PdfZoomActions, type PdfZoomDetail } from "./constants";
 import { pdfFileDataSchema } from "./schema";
 
 const workerSrc = new URL(
@@ -15,7 +17,7 @@ export const PDF_FILE_URL = "/pdfs/resume.pdf";
 
 const PdfComponent = ({ windowId = "pdf", fileContext }: AppWindowComponentProps) => {
   const fileData =
-    fileContext?.type === "pdf"
+    fileContext?.type === FileTypes.pdf
       ? pdfFileDataSchema.safeParse(fileContext.data).data
       : undefined;
   const fileUrl = fileData?.url ?? PDF_FILE_URL;
@@ -26,12 +28,12 @@ const PdfComponent = ({ windowId = "pdf", fileContext }: AppWindowComponentProps
 
   useEffect(() => {
     const handleZoom = (event: Event) => {
-      const detail = (event as CustomEvent<{ action: "in" | "out" | "reset"; windowId?: string }>).detail;
+      const detail = (event as CustomEvent<PdfZoomDetail>).detail;
       if (!detail) return;
       if (detail.windowId && detail.windowId !== windowId) return;
-      if (detail.action === "in") setScale((prev) => Math.min(prev + 0.1, 3));
-      if (detail.action === "out") setScale((prev) => Math.max(prev - 0.1, 0.5));
-      if (detail.action === "reset") setScale(1);
+      if (detail.action === PdfZoomActions.in) setScale((prev) => Math.min(prev + 0.1, 3));
+      if (detail.action === PdfZoomActions.out) setScale((prev) => Math.max(prev - 0.1, 0.5));
+      if (detail.action === PdfZoomActions.reset) setScale(1);
     };
     window.addEventListener("pdf-zoom", handleZoom as EventListener);
     return () => {

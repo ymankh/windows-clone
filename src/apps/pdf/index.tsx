@@ -1,6 +1,8 @@
 import { FileDown } from "lucide-react";
 import type { DesktopApp } from "../types";
+import { FileTypes } from "../fileTypes";
 import PdfComponent, { PDF_FILE_URL } from "./Component";
+import { PdfZoomActions } from "./constants";
 import { pdfFileDataSchema } from "./schema";
 
 const createPdfMenubar = (windowId: string) => [
@@ -22,7 +24,9 @@ const createPdfMenubar = (windowId: string) => [
         label: "Zoom In",
         onSelect: () => {
           window.dispatchEvent(
-            new CustomEvent("pdf-zoom", { detail: { action: "in", windowId } })
+            new CustomEvent("pdf-zoom", {
+              detail: { action: PdfZoomActions.in, windowId },
+            })
           );
         },
       },
@@ -30,7 +34,9 @@ const createPdfMenubar = (windowId: string) => [
         label: "Zoom Out",
         onSelect: () => {
           window.dispatchEvent(
-            new CustomEvent("pdf-zoom", { detail: { action: "out", windowId } })
+            new CustomEvent("pdf-zoom", {
+              detail: { action: PdfZoomActions.out, windowId },
+            })
           );
         },
       },
@@ -38,7 +44,9 @@ const createPdfMenubar = (windowId: string) => [
         label: "Reset Zoom",
         onSelect: () => {
           window.dispatchEvent(
-            new CustomEvent("pdf-zoom", { detail: { action: "reset", windowId } })
+            new CustomEvent("pdf-zoom", {
+              detail: { action: PdfZoomActions.reset, windowId },
+            })
           );
         },
       },
@@ -52,5 +60,5 @@ export const PdfApp: DesktopApp = {
   icon: FileDown,
   Component: PdfComponent,
   createMenubar: createPdfMenubar,
-  fileCapabilities: [{ fileType: "pdf", schema: pdfFileDataSchema }],
+  fileCapabilities: [{ fileType: FileTypes.pdf, schema: pdfFileDataSchema }],
 };

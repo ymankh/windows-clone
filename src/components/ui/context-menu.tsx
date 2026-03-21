@@ -3,6 +3,7 @@ import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { MenuItemVariants, type MenuItemVariant } from "./menuItemVariants"
 
 function ContextMenu({
   ...props
@@ -112,11 +113,11 @@ function ContextMenuContent({
 function ContextMenuItem({
   className,
   inset,
-  variant = "default",
+  variant = MenuItemVariants.default,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Item> & {
   inset?: boolean
-  variant?: "default" | "destructive"
+  variant?: MenuItemVariant
 }) {
   return (
     <ContextMenuPrimitive.Item

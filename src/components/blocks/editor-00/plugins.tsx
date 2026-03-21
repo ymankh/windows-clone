@@ -9,6 +9,7 @@ import {
   UNDO_COMMAND,
 } from "lexical"
 
+import { NotesEditorActions, type NotesEditorCommandDetail } from "@/apps/notes/constants"
 import { ContentEditable } from "@/components/editor/editor-ui/content-editable"
 
 const WindowCommandPlugin = () => {
@@ -16,27 +17,27 @@ const WindowCommandPlugin = () => {
 
   useEffect(() => {
     const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ action: string }>).detail
+      const detail = (event as CustomEvent<NotesEditorCommandDetail>).detail
       if (!detail) return
       const action = detail.action
 
       switch (action) {
-        case "bold":
+        case NotesEditorActions.bold:
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")
           break
-        case "italic":
+        case NotesEditorActions.italic:
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")
           break
-        case "underline":
+        case NotesEditorActions.underline:
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline")
           break
-        case "undo":
+        case NotesEditorActions.undo:
           editor.dispatchCommand(UNDO_COMMAND, undefined)
           break
-        case "redo":
+        case NotesEditorActions.redo:
           editor.dispatchCommand(REDO_COMMAND, undefined)
           break
-        case "clear":
+        case NotesEditorActions.clear:
           editor.dispatchCommand(CLEAR_EDITOR_COMMAND, undefined)
           break
         default:

@@ -1,6 +1,7 @@
 import { Globe } from "lucide-react";
 import type { DesktopApp } from "../types";
 import BrowserComponent from "./Component";
+import { BrowserCommandTypes } from "./constants";
 
 const createBrowserMenubar = (windowId: string) => [
   {
@@ -11,7 +12,7 @@ const createBrowserMenubar = (windowId: string) => [
         onSelect: () =>
           window.dispatchEvent(
             new CustomEvent("browser-command", {
-              detail: { type: "back", windowId },
+              detail: { type: BrowserCommandTypes.back, windowId },
             })
           ),
       },
@@ -20,7 +21,7 @@ const createBrowserMenubar = (windowId: string) => [
         onSelect: () =>
           window.dispatchEvent(
             new CustomEvent("browser-command", {
-              detail: { type: "forward", windowId },
+              detail: { type: BrowserCommandTypes.forward, windowId },
             })
           ),
       },
@@ -30,7 +31,7 @@ const createBrowserMenubar = (windowId: string) => [
         onSelect: () =>
           window.dispatchEvent(
             new CustomEvent("browser-command", {
-              detail: { type: "reload", windowId },
+              detail: { type: BrowserCommandTypes.reload, windowId },
             })
           ),
       },
@@ -39,7 +40,7 @@ const createBrowserMenubar = (windowId: string) => [
         onSelect: () =>
           window.dispatchEvent(
             new CustomEvent("browser-command", {
-              detail: { type: "home", windowId },
+              detail: { type: BrowserCommandTypes.home, windowId },
             })
           ),
       },

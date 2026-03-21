@@ -1,10 +1,17 @@
 import { FileText, Folder as FolderIcon, Image as ImageIcon, Music } from "lucide-react";
 import { type TreeDataItem } from "@/components/tree-view";
+import { FileTypes } from "@/apps/fileTypes";
 import { Split } from "@/components/ui/split";
 import { FilesGrid } from "./componsnts/FilesGrid";
 import { Header } from "./componsnts/Header";
 import { Sidebar } from "./componsnts/Sidebar";
-import { type FileEntry, type FolderItem, type OpenWithOption, type Selection } from "./componsnts/types";
+import {
+  FileEntryTypes,
+  type FileEntry,
+  type FolderItem,
+  type OpenWithOption,
+  type Selection,
+} from "./componsnts/types";
 import { desktopApps } from "@/apps";
 import { buildAppWindow } from "@/apps/windowBuilder";
 import { toAppInstanceId } from "@/apps/windowing";
@@ -62,32 +69,32 @@ indexTree(folderTree);
 
 const folderContents: Record<string, FolderItem[]> = {
   home: [
-    { name: "Documents", type: "folder", targetId: "documents" },
-    { name: "Media", type: "folder", targetId: "media" },
-    { name: "Downloads", type: "folder", targetId: "downloads" },
-    { name: "Archive", type: "folder", targetId: "archive" },
+    { name: "Documents", type: FileEntryTypes.folder, targetId: "documents" },
+    { name: "Media", type: FileEntryTypes.folder, targetId: "media" },
+    { name: "Downloads", type: FileEntryTypes.folder, targetId: "downloads" },
+    { name: "Archive", type: FileEntryTypes.folder, targetId: "archive" },
   ],
   documents: [
     {
       name: "Notes.md",
-      type: "file",
-      fileType: "notes",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.notes,
       meta: "12 KB",
       icon: FileText,
       data: { text: "# Notes\n\nThis note came from Explorer file data." },
     },
     {
       name: "Project-Proposal.docx",
-      type: "file",
-      fileType: "notes",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.notes,
       meta: "84 KB",
       icon: FileText,
       data: { text: "Project Proposal draft content." },
     },
     {
       name: "Budget.xlsx",
-      type: "file",
-      fileType: "notes",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.notes,
       meta: "32 KB",
       icon: FileText,
       data: { text: "Budget summary in plain text format." },
@@ -96,15 +103,15 @@ const folderContents: Record<string, FolderItem[]> = {
   reports: [
     {
       name: "Q1-Report.pdf",
-      type: "file",
-      fileType: "pdf",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.pdf,
       meta: "1.2 MB",
       data: { url: "/pdfs/resume.pdf" },
     },
     {
       name: "Q2-Report.pdf",
-      type: "file",
-      fileType: "pdf",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.pdf,
       meta: "1.3 MB",
       data: { url: "/pdfs/resume.pdf" },
     },
@@ -112,30 +119,30 @@ const folderContents: Record<string, FolderItem[]> = {
   invoices: [
     {
       name: "Invoice-1043.pdf",
-      type: "file",
-      fileType: "pdf",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.pdf,
       meta: "320 KB",
       data: { url: "/pdfs/resume.pdf" },
     },
     {
       name: "Invoice-1044.pdf",
-      type: "file",
-      fileType: "pdf",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.pdf,
       meta: "310 KB",
       data: { url: "/pdfs/resume.pdf" },
     },
   ],
   media: [
-    { name: "Photos", type: "folder", targetId: "photos" },
-    { name: "Music", type: "folder", targetId: "music" },
+    { name: "Photos", type: FileEntryTypes.folder, targetId: "photos" },
+    { name: "Music", type: FileEntryTypes.folder, targetId: "music" },
   ],
   photos: [
-    { name: "Vacation", type: "folder", targetId: "vacation" },
-    { name: "Headshots", type: "folder", targetId: "headshots" },
+    { name: "Vacation", type: FileEntryTypes.folder, targetId: "vacation" },
+    { name: "Headshots", type: FileEntryTypes.folder, targetId: "headshots" },
     {
       name: "Wallpaper.png",
-      type: "file",
-      fileType: "image",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.image,
       meta: "1.8 MB",
       icon: ImageIcon,
       data: { url: "/wallpaper.jpg", alt: "Wallpaper" },
@@ -144,16 +151,16 @@ const folderContents: Record<string, FolderItem[]> = {
   vacation: [
     {
       name: "Beach.png",
-      type: "file",
-      fileType: "image",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.image,
       meta: "2.1 MB",
       icon: ImageIcon,
       data: { url: "/wallpaper.jpg", alt: "Beach" },
     },
     {
       name: "Mountains.png",
-      type: "file",
-      fileType: "image",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.image,
       meta: "1.4 MB",
       icon: ImageIcon,
       data: { url: "/wallpaper.jpg", alt: "Mountains" },
@@ -162,8 +169,8 @@ const folderContents: Record<string, FolderItem[]> = {
   headshots: [
     {
       name: "Profile.jpg",
-      type: "file",
-      fileType: "image",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.image,
       meta: "720 KB",
       icon: ImageIcon,
       data: { url: "/wallpaper.jpg", alt: "Profile" },
@@ -172,8 +179,8 @@ const folderContents: Record<string, FolderItem[]> = {
   music: [
     {
       name: "Moavii - Foreign (freetouse.com).mp3",
-      type: "file",
-      fileType: "audio",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.audio,
       meta: "5.1 MB",
       icon: Music,
       data: {
@@ -184,8 +191,8 @@ const folderContents: Record<string, FolderItem[]> = {
     },
     {
       name: "Demo.wav",
-      type: "file",
-      fileType: "audio",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.audio,
       meta: "273 KB",
       icon: Music,
       data: {
@@ -200,8 +207,8 @@ const folderContents: Record<string, FolderItem[]> = {
   archive: [
     {
       name: "old-notes.txt",
-      type: "file",
-      fileType: "notes",
+      type: FileEntryTypes.file,
+      fileType: FileTypes.notes,
       meta: "8 KB",
       icon: FileText,
       data: { text: "Archived notes file content." },

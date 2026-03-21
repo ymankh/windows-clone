@@ -2,6 +2,11 @@ import type { ComponentType, SVGProps } from "react";
 import { Folder as FolderIcon } from "lucide-react";
 import type { FileType } from "@/apps/fileTypes";
 
+export const FileEntryTypes = {
+  folder: "folder",
+  file: "file",
+} as const;
+
 type BaseItem = {
   name: string;
   meta?: string;
@@ -9,12 +14,12 @@ type BaseItem = {
 };
 
 export type FolderEntry = BaseItem & {
-  type: "folder";
+  type: typeof FileEntryTypes.folder;
   targetId?: string;
 };
 
 export type FileEntry = BaseItem & {
-  type: "file";
+  type: typeof FileEntryTypes.file;
   fileType: FileType;
   data: unknown;
 };

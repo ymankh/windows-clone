@@ -1,3 +1,12 @@
-export const FILE_TYPES = ["notes", "pdf", "image", "audio", "archive", "binary"] as const;
+export const FileTypes = {
+  notes: "notes",
+  pdf: "pdf",
+  image: "image",
+  audio: "audio",
+  archive: "archive",
+  binary: "binary",
+} as const;
 
-export type FileType = (typeof FILE_TYPES)[number];
+export type FileType = (typeof FileTypes)[keyof typeof FileTypes];
+
+export const FILE_TYPES = Object.values(FileTypes) as FileType[];

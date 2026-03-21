@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { AppWindowComponentProps } from "../types";
 import type { SerializedEditorState } from "lexical";
 import { Editor } from "shadcn-editor/editor";
+import { FileTypes } from "../fileTypes";
+import {
+  LexicalNodeTypes,
+  LexicalTextModes,
+  NotesFileActions,
+  type NotesFileCommandDetail,
+} from "./constants";
 import { notesFileDataSchema } from "./schema";
 
 const STORAGE_KEY = "notes-app-content";
@@ -9,26 +16,26 @@ const STORAGE_KEY = "notes-app-content";
 const toSerializedStateFromText = (text: string): SerializedEditorState =>
   ({
     root: {
-      type: "root",
+      type: LexicalNodeTypes.root,
       version: 1,
       format: "",
       indent: 0,
       direction: null,
       children: [
         {
-          type: "paragraph",
+          type: LexicalNodeTypes.paragraph,
           version: 1,
           format: "",
           indent: 0,
           direction: null,
           children: [
             {
-              type: "text",
+              type: LexicalNodeTypes.text,
               version: 1,
               text,
               detail: 0,
               format: 0,
-              mode: "normal",
+              mode: LexicalTextModes.normal,
               style: "",
             },
           ],
@@ -39,7 +46,7 @@ const toSerializedStateFromText = (text: string): SerializedEditorState =>
 
 const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentProps) => {
   const initialSerializedState = useMemo(() => {
-    if (fileContext?.type === "notes") {
+    if (fileContext?.type === FileTypes.notes) {
       const parsed = notesFileDataSchema.safeParse(fileContext.data);
       if (parsed.success) {
         if (parsed.data.serialized && typeof parsed.data.serialized === "object") {
@@ -71,11 +78,11 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
 
   useEffect(() => {
     const handleCommand = (event: Event) => {
-      const detail = (event as CustomEvent<{ action: string; payload?: File; windowId?: string }>).detail;
+      const detail = (event as CustomEvent<NotesFileCommandDetail>).detail;
       if (!detail) return;
       if (detail.windowId && detail.windowId !== windowId) return;
 
-      if (detail.action === "save-md") {
+      if (detail.action === NotesFileActions.saveMd) {
         const content = localStorage.getItem(STORAGE_KEY) ?? "";
         const blob = new Blob([content], { type: "text/markdown" });
         const url = URL.createObjectURL(blob);
@@ -86,7 +93,7 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
         URL.revokeObjectURL(url);
       }
 
-      if (detail.action === "open-md") {
+      if (detail.action === NotesFileActions.openMd) {
         const file = detail.payload;
         if (!file) return;
         file.text().then((text) => {
@@ -124,7 +131,11 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
           if (!file) return;
           window.dispatchEvent(
             new CustomEvent("notes-file-command", {
-              detail: { action: "open-md", payload: file, windowId },
+              detail: {
+                action: NotesFileActions.openMd,
+                payload: file,
+                windowId,
+              },
             })
           );
           event.target.value = "";

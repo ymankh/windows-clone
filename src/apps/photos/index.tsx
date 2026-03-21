@@ -1,6 +1,8 @@
 import { Image } from "lucide-react";
 import type { DesktopApp } from "../types";
+import { FileTypes } from "../fileTypes";
 import PhotosComponent from "./Component";
+import { PhotosCommandTypes } from "./constants";
 import { imageFileDataSchema } from "./schema";
 
 const createPhotosMenubar = (windowId: string) => [
@@ -12,14 +14,18 @@ const createPhotosMenubar = (windowId: string) => [
         shortcut: "Space",
         onSelect: () =>
           window.dispatchEvent(
-            new CustomEvent("photos-command", { detail: { type: "play", windowId } })
+            new CustomEvent("photos-command", {
+              detail: { type: PhotosCommandTypes.play, windowId },
+            })
           ),
       },
       {
         label: "Pause Slideshow",
         onSelect: () =>
           window.dispatchEvent(
-            new CustomEvent("photos-command", { detail: { type: "pause", windowId } })
+            new CustomEvent("photos-command", {
+              detail: { type: PhotosCommandTypes.pause, windowId },
+            })
           ),
       },
     ],
@@ -32,14 +38,18 @@ const createPhotosMenubar = (windowId: string) => [
         shortcut: "Ctrl+R",
         onSelect: () =>
           window.dispatchEvent(
-            new CustomEvent("photos-command", { detail: { type: "reset", windowId } })
+            new CustomEvent("photos-command", {
+              detail: { type: PhotosCommandTypes.reset, windowId },
+            })
           ),
       },
       {
         label: "Shuffle Focus",
         onSelect: () =>
           window.dispatchEvent(
-            new CustomEvent("photos-command", { detail: { type: "shuffle", windowId } })
+            new CustomEvent("photos-command", {
+              detail: { type: PhotosCommandTypes.shuffle, windowId },
+            })
           ),
       },
     ],
@@ -52,5 +62,5 @@ export const PhotosApp: DesktopApp = {
   icon: Image,
   Component: PhotosComponent,
   createMenubar: createPhotosMenubar,
-  fileCapabilities: [{ fileType: "image", schema: imageFileDataSchema }],
+  fileCapabilities: [{ fileType: FileTypes.image, schema: imageFileDataSchema }],
 };

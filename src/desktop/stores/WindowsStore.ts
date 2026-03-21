@@ -4,16 +4,27 @@ import { immer } from "zustand/middleware/immer";
 
 type WindowIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
+export const WindowMenuItemTypes = {
+  item: "item",
+  separator: "separator",
+  submenu: "submenu",
+} as const;
+
 export type WindowMenuItem =
   | {
-      type?: "item";
+      type?: typeof WindowMenuItemTypes.item;
       label: string;
       shortcut?: string;
       disabled?: boolean;
       onSelect?: () => void;
     }
-  | { type: "separator" }
-  | { type: "submenu"; label: string; items: WindowMenuItem[]; disabled?: boolean };
+  | { type: typeof WindowMenuItemTypes.separator }
+  | {
+      type: typeof WindowMenuItemTypes.submenu;
+      label: string;
+      items: WindowMenuItem[];
+      disabled?: boolean;
+    };
 
 export interface WindowMenu {
   label: string;

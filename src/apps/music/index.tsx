@@ -1,6 +1,8 @@
 import { Music4 } from "lucide-react";
 import type { DesktopApp } from "../types";
+import { FileTypes } from "../fileTypes";
 import MusicComponent from "./Component";
+import { MusicCommandTypes } from "./constants";
 import { audioFileDataSchema } from "./schema";
 
 const createMusicMenubar = (windowId: string) => [
@@ -13,7 +15,7 @@ const createMusicMenubar = (windowId: string) => [
         onSelect: () =>
           window.dispatchEvent(
             new CustomEvent("music-command", {
-              detail: { type: "toggle", windowId },
+              detail: { type: MusicCommandTypes.toggle, windowId },
             })
           ),
       },
@@ -22,7 +24,7 @@ const createMusicMenubar = (windowId: string) => [
         onSelect: () =>
           window.dispatchEvent(
             new CustomEvent("music-command", {
-              detail: { type: "previous", windowId },
+              detail: { type: MusicCommandTypes.previous, windowId },
             })
           ),
       },
@@ -31,7 +33,7 @@ const createMusicMenubar = (windowId: string) => [
         onSelect: () =>
           window.dispatchEvent(
             new CustomEvent("music-command", {
-              detail: { type: "next", windowId },
+              detail: { type: MusicCommandTypes.next, windowId },
             })
           ),
       },
@@ -45,5 +47,5 @@ export const MusicApp: DesktopApp = {
   icon: Music4,
   Component: MusicComponent,
   createMenubar: createMusicMenubar,
-  fileCapabilities: [{ fileType: "audio", schema: audioFileDataSchema }],
+  fileCapabilities: [{ fileType: FileTypes.audio, schema: audioFileDataSchema }],
 };

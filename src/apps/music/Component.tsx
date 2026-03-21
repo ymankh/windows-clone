@@ -3,6 +3,8 @@ import { Pause, Play, SkipBack, SkipForward, Trash2, Volume2 } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import type { AppWindowComponentProps } from "../types";
+import { FileTypes } from "../fileTypes";
+import { MusicCommandTypes, type MusicCommandDetail } from "./constants";
 import { audioFileDataSchema } from "./schema";
 import useMusicStore from "./store";
 
@@ -16,7 +18,7 @@ const formatTime = (seconds: number) => {
 };
 
 const createIncomingTrack = (fileContext: AppWindowComponentProps["fileContext"]) => {
-  if (fileContext?.type !== "audio") return undefined;
+  if (fileContext?.type !== FileTypes.audio) return undefined;
   const parsed = audioFileDataSchema.safeParse(fileContext.data);
   if (!parsed.success) return undefined;
 
@@ -91,26 +93,23 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
   useEffect(() => {
     const handleCommand = (event: Event) => {
       const detail = (
-        event as CustomEvent<{
-          type?: "toggle" | "next" | "previous";
-          windowId?: string;
-        }>
+        event as CustomEvent<MusicCommandDetail>
       ).detail;
       if (!detail) return;
       if (detail.windowId && detail.windowId !== windowId) return;
 
-      if (detail.type === "toggle") {
+      if (detail.type === MusicCommandTypes.toggle) {
         if (!currentTrack) return;
         setIsPlaying((value) => !value);
       }
 
-      if (detail.type === "next") {
+      if (detail.type === MusicCommandTypes.next) {
         if (tracks.length < 2) return;
         playNext();
         setIsPlaying(true);
       }
 
-      if (detail.type === "previous") {
+      if (detail.type === MusicCommandTypes.previous) {
         if (tracks.length < 2) return;
         playPrevious();
         setIsPlaying(true);

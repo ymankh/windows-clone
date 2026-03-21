@@ -1,9 +1,10 @@
 import type { AppWindowComponentProps } from "../types";
+import { FileTypes } from "../fileTypes";
 import { imageFileDataSchema } from "./schema";
 
 const PhotosComponent = ({ fileContext }: AppWindowComponentProps) => {
   const imageData =
-    fileContext?.type === "image"
+    fileContext?.type === FileTypes.image
       ? imageFileDataSchema.safeParse(fileContext.data).data
       : undefined;
 

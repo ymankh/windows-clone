@@ -9,6 +9,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AppWindowComponentProps } from "../types";
+import {
+  BrowserCommandTypes,
+  type BrowserCommandDetail,
+} from "./constants";
 
 type QuickLink = {
   label: string;
@@ -41,15 +45,12 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
   useEffect(() => {
     const handleCommand = (event: Event) => {
       const detail = (
-        event as CustomEvent<{
-          type?: "back" | "forward" | "reload" | "home";
-          windowId?: string;
-        }>
+        event as CustomEvent<BrowserCommandDetail>
       ).detail;
       if (!detail) return;
       if (detail.windowId && detail.windowId !== windowId) return;
 
-      if (detail.type === "back") {
+      if (detail.type === BrowserCommandTypes.back) {
           setHistoryIndex((value) => {
             const nextIndex = Math.max(0, value - 1);
             setAddress(history[nextIndex] ?? HOME_URL);
@@ -57,7 +58,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
           });
         }
 
-      if (detail.type === "forward") {
+      if (detail.type === BrowserCommandTypes.forward) {
           setHistoryIndex((value) => {
             const nextIndex = Math.min(history.length - 1, value + 1);
             setAddress(history[nextIndex] ?? HOME_URL);
@@ -65,11 +66,11 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
           });
         }
 
-        if (detail.type === "reload") {
+        if (detail.type === BrowserCommandTypes.reload) {
           setIframeKey((value) => value + 1);
         }
 
-      if (detail.type === "home") {
+      if (detail.type === BrowserCommandTypes.home) {
         const nextHistory = history.slice(0, historyIndex + 1);
         nextHistory.push(HOME_URL);
         setHistory(nextHistory);

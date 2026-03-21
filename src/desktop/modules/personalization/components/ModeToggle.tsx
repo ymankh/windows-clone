@@ -1,6 +1,6 @@
 import { Moon, Sun } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import useThemeStore from "../store/ThemeStore";
+import useThemeStore, { ThemeModes } from "../store/ThemeStore";
 
 const ModeToggle = () => {
   const { mode, setMode } = useThemeStore();
@@ -11,8 +11,10 @@ const ModeToggle = () => {
         <Sun className="size-4" />
       </div>
       <Switch
-        checked={mode === "dark"}
-        onCheckedChange={(checked) => setMode(checked ? "dark" : "light")}
+        checked={mode === ThemeModes.DARK}
+        onCheckedChange={(checked) =>
+          setMode(checked ? ThemeModes.DARK : ThemeModes.LIGHT)
+        }
         aria-label="Toggle dark mode"
       />
       <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">

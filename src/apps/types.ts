@@ -1,7 +1,7 @@
 import type { ComponentType, SVGProps } from "react";
 import type { WindowMenu } from "../desktop/stores/WindowsStore";
 import type { FileType } from "./fileTypes";
-import type { ZodTypeAny } from "zod";
+import type { ZodType } from "zod";
 
 export type AppWindowComponentProps = {
   windowId?: string;
@@ -14,7 +14,7 @@ export type AppWindowComponentProps = {
 
 export type AppFileCapability = {
   fileType: FileType;
-  schema: ZodTypeAny;
+  schema: ZodType;
 };
 
 export type DesktopApp = {

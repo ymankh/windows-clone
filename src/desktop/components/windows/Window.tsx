@@ -18,8 +18,39 @@ type WindowProps = {
   children: ReactNode;
 };
 
-type DockTarget = "left" | "right" | "top" | null;
-type WindowLayoutMode = "normal" | "maximized" | "docked-left" | "docked-right";
+const DockTargets = {
+  LEFT: "left",
+  RIGHT: "right",
+  TOP: "top",
+} as const;
+
+type DockTarget = ((typeof DockTargets)[keyof typeof DockTargets]) | null;
+
+const WindowLayoutModes = {
+  NORMAL: "normal",
+  MAXIMIZED: "maximized",
+  DOCKED_LEFT: "docked-left",
+  DOCKED_RIGHT: "docked-right",
+} as const;
+
+type WindowLayoutMode =
+  (typeof WindowLayoutModes)[keyof typeof WindowLayoutModes];
+
+const ResizeHorizontalEdges = {
+  LEFT: "left",
+  RIGHT: "right",
+} as const;
+
+type ResizeHorizontalEdge =
+  ((typeof ResizeHorizontalEdges)[keyof typeof ResizeHorizontalEdges]) | null;
+
+const ResizeVerticalEdges = {
+  TOP: "top",
+  BOTTOM: "bottom",
+} as const;
+
+type ResizeVerticalEdge =
+  ((typeof ResizeVerticalEdges)[keyof typeof ResizeVerticalEdges]) | null;
 
 const TASKBAR_HEIGHT = 56;
 const DOCK_EDGE_THRESHOLD = 32;
@@ -37,7 +68,9 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   const updateWindowBounds = useWindowsManagerStore(
     (state) => state.updateWindowBounds
   );
-  const [layoutMode, setLayoutMode] = useState<WindowLayoutMode>("normal");
+  const [layoutMode, setLayoutMode] = useState<WindowLayoutMode>(
+    WindowLayoutModes.NORMAL
+  );
   const [isClosing, setIsClosing] = useState(false);
   const [dockPreview, setDockPreview] = useState<DockTarget>(null);
   const minWidth = 320;
@@ -60,8 +93,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   });
   const resizeState = useRef({
     resizing: false,
-    edgeX: null as "left" | "right" | null,
-    edgeY: null as "top" | "bottom" | null,
+    edgeX: null as ResizeHorizontalEdge,
+    edgeY: null as ResizeVerticalEdge,
     startX: 0,
     startY: 0,
     startWidth: 0,
@@ -88,9 +121,9 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   const getDockTarget = useCallback(
     (pointerX: number, pointerY: number): DockTarget => {
       const { width } = getDesktopBounds();
-      if (pointerY <= DOCK_EDGE_THRESHOLD) return "top";
-      if (pointerX <= DOCK_EDGE_THRESHOLD) return "left";
-      if (pointerX >= width - DOCK_EDGE_THRESHOLD) return "right";
+      if (pointerY <= DOCK_EDGE_THRESHOLD) return DockTargets.TOP;
+      if (pointerX <= DOCK_EDGE_THRESHOLD) return DockTargets.LEFT;
+      if (pointerX >= width - DOCK_EDGE_THRESHOLD) return DockTargets.RIGHT;
       return null;
     },
     [getDesktopBounds]
@@ -107,25 +140,32 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         height: windowData.height,
       };
 
-      if (target === "top") {
+      if (target === DockTargets.TOP) {
         updateWindowBounds(id, {
           x: 0,
           y: 0,
           width: Math.max(minWidth, viewportWidth),
           height: Math.max(minHeight, desktopHeight),
         });
-        setLayoutMode("maximized");
+        setLayoutMode(WindowLayoutModes.MAXIMIZED);
         return;
       }
 
       const dockedWidth = Math.max(minWidth, Math.floor(viewportWidth / 2));
       updateWindowBounds(id, {
-        x: target === "left" ? 0 : Math.max(0, viewportWidth - dockedWidth),
+        x:
+          target === DockTargets.LEFT
+            ? 0
+            : Math.max(0, viewportWidth - dockedWidth),
         y: 0,
         width: dockedWidth,
         height: Math.max(minHeight, desktopHeight),
       });
-      setLayoutMode(target === "left" ? "docked-left" : "docked-right");
+      setLayoutMode(
+        target === DockTargets.LEFT
+          ? WindowLayoutModes.DOCKED_LEFT
+          : WindowLayoutModes.DOCKED_RIGHT
+      );
     },
     [getDesktopBounds, id, minHeight, minWidth, updateWindowBounds, windowData]
   );
@@ -204,7 +244,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     let width = windowData.width;
     let height = windowData.height;
 
-    if (layoutMode !== "normal") {
+    if (layoutMode !== WindowLayoutModes.NORMAL) {
       const fallback = {
         x: Math.max(0, Math.floor((viewportWidth - minWidth) / 2)),
         y: 64,
@@ -225,7 +265,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         Math.max(0, viewportHeight - TASKBAR_HEIGHT - height)
       );
       updateWindowBounds(id, { x: baseX, y: baseY, width, height });
-      setLayoutMode("normal");
+      setLayoutMode(WindowLayoutModes.NORMAL);
     }
 
     dragState.current = {
@@ -244,7 +284,12 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
 
   const handleResizeMove = useCallback(
     (event: PointerEvent) => {
-      if (!resizeState.current.resizing || layoutMode !== "normal") return;
+      if (
+        !resizeState.current.resizing ||
+        layoutMode !== WindowLayoutModes.NORMAL
+      ) {
+        return;
+      }
       event.preventDefault();
       const viewportWidth =
         window.innerWidth || document.documentElement.clientWidth || 0;
@@ -257,19 +302,19 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
       let newX = resizeState.current.startPosX;
       let newY = resizeState.current.startPosY;
       let newWidth =
-        resizeState.current.edgeX === "right"
+        resizeState.current.edgeX === ResizeHorizontalEdges.RIGHT
           ? resizeState.current.startWidth + deltaX
-          : resizeState.current.edgeX === "left"
+          : resizeState.current.edgeX === ResizeHorizontalEdges.LEFT
             ? resizeState.current.startWidth - deltaX
             : resizeState.current.startWidth;
       let newHeight =
-        resizeState.current.edgeY === "bottom"
+        resizeState.current.edgeY === ResizeVerticalEdges.BOTTOM
           ? resizeState.current.startHeight + deltaY
-          : resizeState.current.edgeY === "top"
+          : resizeState.current.edgeY === ResizeVerticalEdges.TOP
             ? resizeState.current.startHeight - deltaY
             : resizeState.current.startHeight;
 
-      if (resizeState.current.edgeX === "left") {
+      if (resizeState.current.edgeX === ResizeHorizontalEdges.LEFT) {
         const maxLeftShift =
           resizeState.current.startPosX + resizeState.current.startWidth - minWidth;
         const clampedShift = Math.max(
@@ -280,12 +325,12 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         newWidth =
           resizeState.current.startWidth +
           (resizeState.current.startPosX - newX);
-      } else if (resizeState.current.edgeX === "right") {
+      } else if (resizeState.current.edgeX === ResizeHorizontalEdges.RIGHT) {
         const maxWidth = viewportWidth - resizeState.current.startPosX;
         newWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
       }
 
-      if (resizeState.current.edgeY === "top") {
+      if (resizeState.current.edgeY === ResizeVerticalEdges.TOP) {
         const maxTopShift =
           resizeState.current.startPosY + resizeState.current.startHeight - minHeight;
         const clampedShift = Math.max(
@@ -296,7 +341,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         newHeight =
           resizeState.current.startHeight +
           (resizeState.current.startPosY - newY);
-      } else if (resizeState.current.edgeY === "bottom") {
+      } else if (resizeState.current.edgeY === ResizeVerticalEdges.BOTTOM) {
         const maxHeight =
           viewportHeight - TASKBAR_HEIGHT - resizeState.current.startPosY;
         newHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
@@ -326,10 +371,10 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   );
 
   const startResize = (
-    edgeX: "left" | "right" | null,
-    edgeY: "top" | "bottom" | null
+    edgeX: ResizeHorizontalEdge,
+    edgeY: ResizeVerticalEdge
   ): React.PointerEventHandler<HTMLDivElement> => (event) => {
-    if (layoutMode !== "normal" || !windowData) return;
+    if (layoutMode !== WindowLayoutModes.NORMAL || !windowData) return;
     event.stopPropagation();
     event.preventDefault();
     handleFocus();
@@ -362,10 +407,13 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
 
   const toggleMaximize = useCallback(() => {
     if (!windowData) return;
-    if (layoutMode === "maximized" && previousBoundsRef.current) {
+    if (
+      layoutMode === WindowLayoutModes.MAXIMIZED &&
+      previousBoundsRef.current
+    ) {
       const { x, y, width, height } = previousBoundsRef.current;
       updateWindowBounds(id, { x, y, width, height });
-      setLayoutMode("normal");
+      setLayoutMode(WindowLayoutModes.NORMAL);
       return;
     }
     previousBoundsRef.current = {
@@ -375,11 +423,11 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
       height: windowData.height,
     };
     applyMaximizeBounds();
-    setLayoutMode("maximized");
+    setLayoutMode(WindowLayoutModes.MAXIMIZED);
   }, [applyMaximizeBounds, id, layoutMode, updateWindowBounds, windowData]);
 
   useEffect(() => {
-    if (layoutMode !== "maximized") return;
+    if (layoutMode !== WindowLayoutModes.MAXIMIZED) return;
     const handleResize = () => applyMaximizeBounds();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -401,12 +449,15 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               className="pointer-events-none fixed z-[9998] border border-primary/70 bg-primary/15"
               style={(() => {
                 const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
-                if (dockPreview === "top") {
+                if (dockPreview === DockTargets.TOP) {
                   return { left: 0, top: 0, width: viewportWidth, height: desktopHeight };
                 }
                 const dockedWidth = Math.max(minWidth, Math.floor(viewportWidth / 2));
                 return {
-                  left: dockPreview === "left" ? 0 : Math.max(0, viewportWidth - dockedWidth),
+                  left:
+                    dockPreview === DockTargets.LEFT
+                      ? 0
+                      : Math.max(0, viewportWidth - dockedWidth),
                   top: 0,
                   width: dockedWidth,
                   height: desktopHeight,
@@ -478,9 +529,17 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
                   stop(event);
                   toggleMaximize();
                 }}
-                aria-label={layoutMode === "maximized" ? "Restore" : "Maximize"}
+                aria-label={
+                  layoutMode === WindowLayoutModes.MAXIMIZED
+                    ? "Restore"
+                    : "Maximize"
+                }
               >
-                {layoutMode === "maximized" ? <Copy size={14} /> : <Square size={14} />}
+                {layoutMode === WindowLayoutModes.MAXIMIZED ? (
+                  <Copy size={14} />
+                ) : (
+                  <Square size={14} />
+                )}
               </button>
               <button
                 type="button"
@@ -509,35 +568,47 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
           <div className="pointer-events-none absolute inset-0">
             <div
               className="pointer-events-auto absolute inset-y-3 left-0 w-2 cursor-ew-resize"
-              onPointerDown={startResize("left", null)}
+              onPointerDown={startResize(ResizeHorizontalEdges.LEFT, null)}
             />
             <div
               className="pointer-events-auto absolute inset-y-3 right-0 w-2 cursor-ew-resize"
-              onPointerDown={startResize("right", null)}
+              onPointerDown={startResize(ResizeHorizontalEdges.RIGHT, null)}
             />
             <div
               className="pointer-events-auto absolute inset-x-3 top-0 h-2 cursor-ns-resize"
-              onPointerDown={startResize(null, "top")}
+              onPointerDown={startResize(null, ResizeVerticalEdges.TOP)}
             />
             <div
               className="pointer-events-auto absolute inset-x-3 bottom-0 h-2 cursor-ns-resize"
-              onPointerDown={startResize(null, "bottom")}
+              onPointerDown={startResize(null, ResizeVerticalEdges.BOTTOM)}
             />
             <div
               className="pointer-events-auto absolute left-0 top-0 h-3 w-3 cursor-nwse-resize"
-              onPointerDown={startResize("left", "top")}
+              onPointerDown={startResize(
+                ResizeHorizontalEdges.LEFT,
+                ResizeVerticalEdges.TOP
+              )}
             />
             <div
               className="pointer-events-auto absolute right-0 top-0 h-3 w-3 cursor-nesw-resize"
-              onPointerDown={startResize("right", "top")}
+              onPointerDown={startResize(
+                ResizeHorizontalEdges.RIGHT,
+                ResizeVerticalEdges.TOP
+              )}
             />
             <div
               className="pointer-events-auto absolute left-0 bottom-0 h-3 w-3 cursor-nesw-resize"
-              onPointerDown={startResize("left", "bottom")}
+              onPointerDown={startResize(
+                ResizeHorizontalEdges.LEFT,
+                ResizeVerticalEdges.BOTTOM
+              )}
             />
             <div
               className="pointer-events-auto absolute right-0 bottom-0 h-3 w-3 cursor-nwse-resize"
-              onPointerDown={startResize("right", "bottom")}
+              onPointerDown={startResize(
+                ResizeHorizontalEdges.RIGHT,
+                ResizeVerticalEdges.BOTTOM
+              )}
             />
           </div>
           </motion.div>

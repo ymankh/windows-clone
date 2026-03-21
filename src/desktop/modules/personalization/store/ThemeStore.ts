@@ -2,7 +2,12 @@ import { create } from "zustand";
 import { DEFAULT_THEME_ID, themes } from "../../../themes";
 import { DEFAULT_BACKGROUND_ID, backgrounds } from "../../../backgrounds";
 
-export type ThemeMode = "light" | "dark";
+export const ThemeModes = {
+  LIGHT: "light",
+  DARK: "dark",
+} as const;
+
+export type ThemeMode = (typeof ThemeModes)[keyof typeof ThemeModes];
 
 type ThemeStore = {
   themeId: string;
@@ -30,7 +35,7 @@ const loadInitialState = (): { themeId: string; mode: ThemeMode; backgroundUrl: 
   if (typeof window === "undefined") {
     return {
       themeId: DEFAULT_THEME_ID,
-      mode: "light",
+      mode: ThemeModes.LIGHT,
       backgroundUrl: backgrounds.find((b) => b.id === DEFAULT_BACKGROUND_ID)?.image ?? "",
     };
   }
@@ -42,7 +47,7 @@ const loadInitialState = (): { themeId: string; mode: ThemeMode; backgroundUrl: 
     };
     return {
       themeId: parsed.themeId ?? DEFAULT_THEME_ID,
-      mode: parsed.mode ?? "light",
+      mode: parsed.mode ?? ThemeModes.LIGHT,
       backgroundUrl:
         parsed.backgroundUrl ??
         backgrounds.find((b) => b.id === DEFAULT_BACKGROUND_ID)?.image ??
@@ -51,7 +56,7 @@ const loadInitialState = (): { themeId: string; mode: ThemeMode; backgroundUrl: 
   } catch {
     return {
       themeId: DEFAULT_THEME_ID,
-      mode: "light",
+      mode: ThemeModes.LIGHT,
       backgroundUrl: backgrounds.find((b) => b.id === DEFAULT_BACKGROUND_ID)?.image ?? "",
     };
   }
@@ -59,7 +64,7 @@ const loadInitialState = (): { themeId: string; mode: ThemeMode; backgroundUrl: 
 
 const applyMode = (mode: ThemeMode) => {
   if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle("dark", mode === "dark");
+  document.documentElement.classList.toggle("dark", mode === ThemeModes.DARK);
 };
 
 const applyBackground = (backgroundUrl: string) => {

@@ -11,9 +11,9 @@ const ModeToggle = () => {
         <Sun className="size-4" />
       </div>
       <Switch
-        checked={mode === ThemeModes.DARK}
+        checked={mode === ThemeModes.dark}
         onCheckedChange={(checked) =>
-          setMode(checked ? ThemeModes.DARK : ThemeModes.LIGHT)
+          setMode(checked ? ThemeModes.dark : ThemeModes.light)
         }
         aria-label="Toggle dark mode"
       />

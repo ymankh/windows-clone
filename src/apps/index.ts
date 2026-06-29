@@ -1,3 +1,4 @@
+import { AIAssistantApp } from "./ai-assistant";
 import { BrowserApp } from "./browser";
 import { FilesApp } from "./files";
 import { MusicApp } from "./music";
@@ -14,6 +15,7 @@ export const desktopApps = [
   FilesApp,
   TerminalApp,
   PdfApp,
+  AIAssistantApp,
 ];
 
 export type { DesktopApp } from "./types";

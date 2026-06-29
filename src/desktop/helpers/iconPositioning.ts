@@ -61,10 +61,27 @@ export const resolveFreeGridCell = (
   return resolved;
 };
 
-export const getInitialIconPosition = (appId: string): IconPoint => {
+export const getInitialIconPosition = (
+  appId: string,
+  fallbackIndex?: number,
+  rowsPerCol = 5
+): IconPoint => {
   const positions = readStoredIconPositions();
   if (positions[appId]) {
     return resolveFreeGridCell(positions[appId], positions, appId);
+  }
+
+  if (fallbackIndex !== undefined) {
+    const col = Math.floor(fallbackIndex / rowsPerCol);
+    const row = fallbackIndex % rowsPerCol;
+    return resolveFreeGridCell(
+      {
+        x: col * GRID_COL_WIDTH,
+        y: row * GRID_ROW_HEIGHT,
+      },
+      positions,
+      appId
+    );
   }
 
   return resolveFreeGridCell(

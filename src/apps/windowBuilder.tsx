@@ -48,5 +48,6 @@ export const buildAppWindow = (
         <app.Component windowId={windowId} fileContext={validatedFileContext} />
       ),
     menubar: options.menubar ?? app.createMenubar?.(windowId) ?? app.menubar,
+    ...app.defaultWindowBounds,
   };
 };

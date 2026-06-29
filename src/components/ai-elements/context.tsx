@@ -28,6 +28,11 @@ interface ContextSchema {
   modelId?: ModelId;
 }
 
+type ExtendedLanguageModelUsage = LanguageModelUsage & {
+  reasoningTokens?: number;
+  cachedInputTokens?: number;
+};
+
 const ContextContext = createContext<ContextSchema | null>(null);
 
 const useContextValue = () => {
@@ -335,7 +340,8 @@ export const ContextReasoningUsage = ({
   children,
   ...props
 }: ContextReasoningUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage: rawUsage, modelId } = useContextValue();
+  const usage = rawUsage as ExtendedLanguageModelUsage | undefined;
   const reasoningTokens = usage?.reasoningTokens ?? 0;
 
   if (children) {
@@ -375,7 +381,8 @@ export const ContextCacheUsage = ({
   children,
   ...props
 }: ContextCacheUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage: rawUsage, modelId } = useContextValue();
+  const usage = rawUsage as ExtendedLanguageModelUsage | undefined;
   const cacheTokens = usage?.cachedInputTokens ?? 0;
 
   if (children) {

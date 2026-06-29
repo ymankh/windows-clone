@@ -26,6 +26,7 @@ import {
 type DesktopIconProps = {
   app: DesktopApp;
   sortVersion?: number;
+  initialIndex?: number;
   selected?: boolean;
   selectedIds?: string[];
   onSelect?: (options?: { additive?: boolean; toggle?: boolean }) => void;
@@ -34,6 +35,7 @@ type DesktopIconProps = {
 
 const DesktopIcon = ({
   app,
+  initialIndex,
   sortVersion = 0,
   selected = false,
   selectedIds = [],
@@ -44,7 +46,7 @@ const DesktopIcon = ({
   const Icon: ComponentType<SVGProps<SVGSVGElement>> = app.icon;
   const [hidden, setHidden] = useState(false);
   const [position, setPosition] = useState<{ x: number; y: number }>(() =>
-    getInitialIconPosition(app.id)
+    getInitialIconPosition(app.id, initialIndex)
   );
   const dragState = useRef({
     dragging: false,

@@ -41,7 +41,11 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
   const setActiveTrack = useMusicStore((state) => state.setActiveTrack);
   const playNext = useMusicStore((state) => state.playNext);
   const playPrevious = useMusicStore((state) => state.playPrevious);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const isPlaying = useMusicStore((state) => state.isPlaying);
+  const playbackError = useMusicStore((state) => state.playbackError);
+  const setIsPlaying = useMusicStore((state) => state.setIsPlaying);
+  const setPlaybackError = useMusicStore((state) => state.setPlaybackError);
+  const togglePlayback = useMusicStore((state) => state.togglePlayback);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
@@ -86,9 +90,11 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
 
     audio.play().catch(() => {
       pendingAutoplayRef.current = false;
-      setIsPlaying(false);
+      setPlaybackError(
+        "Playback is queued, but the browser blocked autoplay. Press Play to start."
+      );
     });
-  }, [currentTrackId, isPlaying, currentTrack]);
+  }, [currentTrackId, isPlaying, currentTrack, setPlaybackError]);
 
   useEffect(() => {
     const handleCommand = (event: Event) => {
@@ -100,19 +106,21 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
 
       if (detail.type === MusicCommandTypes.toggle) {
         if (!currentTrack) return;
-        setIsPlaying((value) => !value);
+        togglePlayback();
       }
 
       if (detail.type === MusicCommandTypes.next) {
         if (tracks.length < 2) return;
+        pendingAutoplayRef.current = false;
+        setCurrentTime(0);
         playNext();
-        setIsPlaying(true);
       }
 
       if (detail.type === MusicCommandTypes.previous) {
         if (tracks.length < 2) return;
+        pendingAutoplayRef.current = false;
+        setCurrentTime(0);
         playPrevious();
-        setIsPlaying(true);
       }
     };
 
@@ -120,7 +128,7 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
     return () => {
       window.removeEventListener("music-command", handleCommand as EventListener);
     };
-  }, [currentTrack, playNext, playPrevious, tracks.length, windowId]);
+  }, [currentTrack, playNext, playPrevious, togglePlayback, tracks.length, windowId]);
 
   return (
     <div
@@ -166,6 +174,9 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
           <div className="text-sm text-white/80">
             {currentTrack?.artist ?? "Open a file from Explorer to add it here"}
           </div>
+          {playbackError ? (
+            <div className="mt-2 text-xs text-white/75">{playbackError}</div>
+          ) : null}
         </div>
       </div>
 
@@ -187,7 +198,6 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
                 onClick={() => {
                   pendingAutoplayRef.current = false;
                   clearTracks();
-                  setIsPlaying(false);
                   setCurrentTime(0);
                   setDuration(0);
                 }}
@@ -213,8 +223,7 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
                       onClick={() => {
                         pendingAutoplayRef.current = false;
                         setCurrentTime(0);
-                        setActiveTrack(track.id);
-                        setIsPlaying(true);
+                        setActiveTrack(track.id, { play: true });
                       }}
                     >
                       <div>
@@ -245,7 +254,6 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
                 onClick={() => {
                   pendingAutoplayRef.current = false;
                   clearTracks();
-                  setIsPlaying(false);
                   setCurrentTime(0);
                   setDuration(0);
                 }}
@@ -267,7 +275,6 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
                 pendingAutoplayRef.current = false;
                 setCurrentTime(0);
                 playPrevious();
-                setIsPlaying(true);
               }}
             >
               <SkipBack className="h-4 w-4" />
@@ -277,7 +284,7 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
               size="icon-lg"
               disabled={!currentTrack}
               aria-label={isPlaying ? "Pause" : "Play"}
-              onClick={() => setIsPlaying((value) => !value)}
+              onClick={togglePlayback}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
@@ -291,7 +298,6 @@ const MusicComponent = ({ windowId = "music", fileContext }: AppWindowComponentP
                 pendingAutoplayRef.current = false;
                 setCurrentTime(0);
                 playNext();
-                setIsPlaying(true);
               }}
             >
               <SkipForward className="h-4 w-4" />

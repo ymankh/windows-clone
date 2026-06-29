@@ -114,13 +114,7 @@ const completeJsxTag = (code: string) => {
     currentPosition += endIndex;
   }
 
-  return (
-    result +
-    stack
-      .toReversed()
-      .map((tag) => `</${tag}>`)
-      .join("")
-  );
+  return result + [...stack].reverse().map((tag) => `</${tag}>`).join("");
 };
 
 export type JSXPreviewProps = ComponentProps<"div"> & {

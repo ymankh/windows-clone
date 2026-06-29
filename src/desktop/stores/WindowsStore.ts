@@ -31,7 +31,7 @@ export interface WindowMenu {
   items: WindowMenuItem[];
 }
 
-interface Window {
+export interface Window {
   id: string;
   title: string;
   isMinimized: boolean;
@@ -45,7 +45,7 @@ interface Window {
   menubar?: WindowMenu[];
 }
 
-type OpenWindowPayload = {
+export type OpenWindowPayload = {
   id: string;
   title: string;
   icon: WindowIcon;

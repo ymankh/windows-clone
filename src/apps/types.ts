@@ -2,6 +2,7 @@ import type { ComponentType, SVGProps } from "react";
 import type { WindowMenu } from "../desktop/stores/WindowsStore";
 import type { FileType } from "./fileTypes";
 import type { ZodType } from "zod";
+import type { AgentCapabilityRegistration } from "@/agent/protocol";
 
 export type AppWindowComponentProps = {
   windowId?: string;
@@ -17,6 +18,13 @@ export type AppFileCapability = {
   schema: ZodType;
 };
 
+export type DefaultWindowBounds = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+};
+
 export type DesktopApp = {
   id: string;
   title: string;
@@ -25,4 +33,6 @@ export type DesktopApp = {
   createMenubar?: (windowId: string) => WindowMenu[];
   fileCapabilities?: AppFileCapability[];
   menubar?: WindowMenu[];
+  agentCapabilities?: AgentCapabilityRegistration[];
+  defaultWindowBounds?: DefaultWindowBounds;
 };

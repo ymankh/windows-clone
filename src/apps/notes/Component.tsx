@@ -1,80 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
-import type { AppWindowComponentProps } from "../types";
+import { useEffect } from "react";
 import type { SerializedEditorState } from "lexical";
 import { Editor } from "shadcn-editor/editor";
-import { FileTypes } from "../fileTypes";
-import {
-  LexicalNodeTypes,
-  LexicalTextModes,
-  NotesFileActions,
-  type NotesFileCommandDetail,
-} from "./constants";
-import { notesFileDataSchema } from "./schema";
-
-const STORAGE_KEY = "notes-app-content";
-
-const toSerializedStateFromText = (text: string): SerializedEditorState =>
-  ({
-    root: {
-      type: LexicalNodeTypes.root,
-      version: 1,
-      format: "",
-      indent: 0,
-      direction: null,
-      children: [
-        {
-          type: LexicalNodeTypes.paragraph,
-          version: 1,
-          format: "",
-          indent: 0,
-          direction: null,
-          children: [
-            {
-              type: LexicalNodeTypes.text,
-              version: 1,
-              text,
-              detail: 0,
-              format: 0,
-              mode: LexicalTextModes.normal,
-              style: "",
-            },
-          ],
-        },
-      ],
-    },
-  } as unknown as SerializedEditorState);
+import type { AppWindowComponentProps } from "../types";
+import { NotesFileActions, type NotesFileCommandDetail } from "./constants";
+import useNotesStore from "./store";
 
 const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentProps) => {
-  const initialSerializedState = useMemo(() => {
-    if (fileContext?.type === FileTypes.notes) {
-      const parsed = notesFileDataSchema.safeParse(fileContext.data);
-      if (parsed.success) {
-        if (parsed.data.serialized && typeof parsed.data.serialized === "object") {
-          return parsed.data.serialized as SerializedEditorState;
-        }
-        if (typeof parsed.data.text === "string") {
-          return toSerializedStateFromText(parsed.data.text);
-        }
-      }
-    }
-
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return undefined;
-    try {
-      return JSON.parse(saved) as SerializedEditorState;
-    } catch {
-      return undefined;
-    }
-  }, [fileContext]);
-
-  const [serialized, setSerialized] = useState<SerializedEditorState | undefined>(
-    initialSerializedState
-  );
+  const serialized = useNotesStore((state) => state.serialized);
+  const revision = useNotesStore((state) => state.revision);
+  const hydrate = useNotesStore((state) => state.hydrate);
+  const setFromEditor = useNotesStore((state) => state.setFromEditor);
+  const setSerialized = useNotesStore((state) => state.setSerialized);
 
   useEffect(() => {
-    if (!serialized) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
-  }, [serialized]);
+    hydrate(fileContext);
+  }, [fileContext, hydrate]);
 
   useEffect(() => {
     const handleCommand = (event: Event) => {
@@ -83,7 +23,7 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
       if (detail.windowId && detail.windowId !== windowId) return;
 
       if (detail.action === NotesFileActions.saveMd) {
-        const content = localStorage.getItem(STORAGE_KEY) ?? "";
+        const content = JSON.stringify(useNotesStore.getState().serialized ?? {});
         const blob = new Blob([content], { type: "text/markdown" });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
@@ -100,7 +40,6 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
           try {
             const parsed = JSON.parse(text) as SerializedEditorState;
             setSerialized(parsed);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
           } catch {
             // ignore invalid content
           }
@@ -112,13 +51,14 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
     return () => {
       window.removeEventListener("notes-file-command", handleCommand as EventListener);
     };
-  }, [windowId]);
+  }, [setSerialized, windowId]);
 
   return (
     <div className="flex h-full w-full flex-col">
       <Editor
+        key={revision}
         editorSerializedState={serialized}
-        onSerializedChange={setSerialized}
+        onSerializedChange={setFromEditor}
         className="flex-1 min-h-0"
       />
       <input

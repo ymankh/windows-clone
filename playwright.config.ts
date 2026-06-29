@@ -21,9 +21,13 @@ export default defineConfig({
   webServer: process.env.APP_URL
     ? undefined
     : {
-        command: `npm run dev -- --host ${host} --port ${port}`,
+        command: `npm run dev:frontend -- --host ${host} --port ${port}`,
+        env: {
+          VITE_PI_AGENT_WS_URL:
+            process.env.VITE_PI_AGENT_WS_URL ?? "ws://127.0.0.1:9/pi-agent",
+        },
         url: baseURL,
-        reuseExistingServer: true,
+        reuseExistingServer: false,
         timeout: 120_000,
       },
 });

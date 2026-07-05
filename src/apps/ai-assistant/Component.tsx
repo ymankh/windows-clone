@@ -17,6 +17,18 @@ import {
   MessageResponse,
 } from "@/components/ai-elements/message";
 import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@/components/ai-elements/reasoning";
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtStep,
+} from "@/components/ai-elements/chain-of-thought";
+import { Shimmer } from "@/components/ai-elements/shimmer";
+import {
   PromptInput,
   PromptInputBody,
   PromptInputFooter,
@@ -55,6 +67,11 @@ import {
   AGENT_PROTOCOL_VERSION,
   DEFAULT_PERMISSION_MODE,
   isPermissionMode,
+  parseAgentServerEvent,
+  parsePersistedActionRecord,
+  parsePersistedAgentTraceRecord,
+  parsePersistedChatMessage,
+  parsePersistedChatSession,
 } from "@/agent/protocol";
 import { getDesktopAgentCapabilities } from "../agentCapabilities";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
@@ -71,8 +88,8 @@ import type {
   PersistedActionRecord,
   PersistedChatMessage,
   PersistedChatSession,
+  PersistedAgentTraceRecord,
   PermissionMode,
-  SerializableJsonValue,
 } from "@/agent/protocol";
 
 const WS_URL =
@@ -94,6 +111,14 @@ const statusLabels: Record<ConnectionStatus, string> = {
   disconnected: "Disconnected",
   reconnecting: "Reconnecting",
   error: "Connection error",
+};
+
+const logClientAgentEvent = (
+  direction: "input" | "output" | "raw",
+  type: string,
+  payload: unknown
+) => {
+  console.info(`[pi-agent-ui:${direction}] ${type}`, payload);
 };
 
 const actionStateToToolState = (status: AgentActionStatusKind) => {
@@ -134,6 +159,7 @@ const createEmptyChat = (): PersistedChatSession => {
     permissionMode: DEFAULT_PERMISSION_MODE,
     messages: [],
     actions: [],
+    traces: [],
   };
 };
 
@@ -151,24 +177,28 @@ const sanitizeMessage = (value: unknown): PersistedChatMessage | null => {
     return null;
   }
 
-  return {
-    id: value.id,
-    role: value.role,
-    createdAt: typeof value.createdAt === "string" ? value.createdAt : now(),
-    text: typeof value.text === "string" ? value.text : undefined,
-    status:
-      value.status === "streaming" ||
-      value.status === "complete" ||
-      value.status === "error" ||
-      value.status === "cancelled"
-        ? value.status
-        : undefined,
-    actionCallId:
-      typeof value.actionCallId === "string" ? value.actionCallId : undefined,
-    metadata: isRecord(value.metadata)
-      ? (value.metadata as PersistedChatMessage["metadata"])
-      : undefined,
-  };
+  try {
+    return parsePersistedChatMessage({
+      id: value.id,
+      role: value.role,
+      createdAt: typeof value.createdAt === "string" ? value.createdAt : now(),
+      text: typeof value.text === "string" ? value.text : undefined,
+      reasoning: typeof value.reasoning === "string" ? value.reasoning : undefined,
+      status:
+        value.status === "streaming" ||
+        value.status === "complete" ||
+        value.status === "error" ||
+        value.status === "cancelled"
+          ? value.status
+          : undefined,
+      actionCallId:
+        typeof value.actionCallId === "string" ? value.actionCallId : undefined,
+      metadata: isRecord(value.metadata) ? value.metadata : undefined,
+    });
+  } catch (error) {
+    logClientAgentEvent("raw", "persisted.message.invalid", { error, value });
+    return null;
+  }
 };
 
 const sanitizeAction = (value: unknown): PersistedActionRecord | null => {
@@ -193,23 +223,55 @@ const sanitizeAction = (value: unknown): PersistedActionRecord | null => {
       ? value.status
       : "queued";
 
-  return {
-    call: {
-      id: call.id,
-      capability: call.capability as CapabilityName,
-      input: (call.input ?? null) as SerializableJsonValue,
-      sessionId: typeof call.sessionId === "string" ? call.sessionId : undefined,
-      messageId: typeof call.messageId === "string" ? call.messageId : undefined,
-      createdAt: typeof call.createdAt === "string" ? call.createdAt : now(),
-    },
-    result: isRecord(value.result)
-      ? (value.result as PersistedActionRecord["result"])
-      : undefined,
-    status,
-    createdAt: typeof value.createdAt === "string" ? value.createdAt : now(),
-    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : now(),
-  };
+  try {
+    return parsePersistedActionRecord({
+      call: {
+        id: call.id,
+        capability: call.capability,
+        input: call.input ?? null,
+        sessionId: typeof call.sessionId === "string" ? call.sessionId : undefined,
+        messageId: typeof call.messageId === "string" ? call.messageId : undefined,
+        createdAt: typeof call.createdAt === "string" ? call.createdAt : now(),
+      },
+      result: isRecord(value.result) ? value.result : undefined,
+      status,
+      createdAt: typeof value.createdAt === "string" ? value.createdAt : now(),
+      updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : now(),
+    });
+  } catch (error) {
+    logClientAgentEvent("raw", "persisted.action.invalid", { error, value });
+    return null;
+  }
 };
+
+const sanitizeTrace = (value: unknown): PersistedAgentTraceRecord | null => {
+  if (!isRecord(value) || typeof value.id !== "string" || typeof value.title !== "string") {
+    return null;
+  }
+
+  const status =
+    value.status === "pending" ||
+    value.status === "active" ||
+    value.status === "complete" ||
+    value.status === "error"
+      ? value.status
+      : undefined;
+
+  try {
+    return parsePersistedAgentTraceRecord({
+      id: value.id,
+      createdAt: typeof value.createdAt === "string" ? value.createdAt : now(),
+      title: value.title,
+      detail: typeof value.detail === "string" ? value.detail : undefined,
+      status,
+      data: value.data ?? undefined,
+    });
+  } catch (error) {
+    logClientAgentEvent("raw", "persisted.trace.invalid", { error, value });
+    return null;
+  }
+};
+
 
 const sanitizeChat = (value: unknown): PersistedChatSession | null => {
   if (!isRecord(value) || typeof value.id !== "string") return null;
@@ -219,21 +281,29 @@ const sanitizeChat = (value: unknown): PersistedChatSession | null => {
       ? value.permissionMode
       : DEFAULT_PERMISSION_MODE;
 
-  return {
-    id: value.id,
-    title: typeof value.title === "string" ? value.title : "New chat",
-    createdAt: typeof value.createdAt === "string" ? value.createdAt : now(),
-    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : now(),
-    piSessionId:
-      typeof value.piSessionId === "string" ? value.piSessionId : undefined,
-    permissionMode,
-    messages: Array.isArray(value.messages)
-      ? value.messages.map(sanitizeMessage).filter((message) => message !== null)
-      : [],
-    actions: Array.isArray(value.actions)
-      ? value.actions.map(sanitizeAction).filter((action) => action !== null)
-      : [],
-  };
+  try {
+    return parsePersistedChatSession({
+      id: value.id,
+      title: typeof value.title === "string" ? value.title : "New chat",
+      createdAt: typeof value.createdAt === "string" ? value.createdAt : now(),
+      updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : now(),
+      piSessionId:
+        typeof value.piSessionId === "string" ? value.piSessionId : undefined,
+      permissionMode,
+      messages: Array.isArray(value.messages)
+        ? value.messages.map(sanitizeMessage).filter((message) => message !== null)
+        : [],
+      actions: Array.isArray(value.actions)
+        ? value.actions.map(sanitizeAction).filter((action) => action !== null)
+        : [],
+      traces: Array.isArray(value.traces)
+        ? value.traces.map(sanitizeTrace).filter((trace) => trace !== null)
+        : [],
+    });
+  } catch (error) {
+    logClientAgentEvent("raw", "persisted.chat.invalid", { error, value });
+    return null;
+  }
 };
 
 const loadPersistedChats = () => {
@@ -319,6 +389,36 @@ const appendAssistantDelta = (
       ? {
           ...message,
           text: `${message.text ?? ""}${delta}`,
+          status: "streaming" as const,
+        }
+      : message
+  );
+};
+
+const appendAssistantReasoning = (
+  messages: readonly PersistedChatMessage[],
+  id: string,
+  delta: string
+) => {
+  const existing = messages.find((message) => message.id === id);
+  if (!existing) {
+    return [
+      ...messages,
+      {
+        id,
+        role: "assistant" as const,
+        createdAt: now(),
+        reasoning: delta,
+        status: "streaming" as const,
+      },
+    ];
+  }
+
+  return messages.map((message) =>
+    message.id === id
+      ? {
+          ...message,
+          reasoning: `${message.reasoning ?? ""}${delta}`,
           status: "streaming" as const,
         }
       : message
@@ -414,9 +514,47 @@ const upsertActionResult = (
   );
 };
 
+const formatDisplayList = (values: string[]) => {
+  if (values.length === 0) return "";
+  if (values.length === 1) return values[0] ?? "";
+  return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`;
+};
+
+const summarizeActionResultForUser = (result: AgentActionResult) => {
+  if (!result.ok) return `I couldn't complete ${result.capability}: ${result.error.message}`;
+  if (result.message) return result.message;
+
+  const data = result.data;
+  if (result.capability === "windows.listApps" && isRecord(data) && Array.isArray(data.apps)) {
+    const appNames = data.apps
+      .map((app) =>
+        isRecord(app) && typeof app.title === "string" ? app.title : undefined
+      )
+      .filter((title): title is string => Boolean(title));
+    return appNames.length
+      ? `I found ${appNames.length} desktop apps: ${formatDisplayList(appNames)}.`
+      : "I checked the desktop apps, but there were no apps to show.";
+  }
+
+  if (result.capability === "files.search" && isRecord(data) && Array.isArray(data.results)) {
+    const names = data.results
+      .map((file) =>
+        isRecord(file) && typeof file.name === "string" ? file.name : undefined
+      )
+      .filter((name): name is string => Boolean(name));
+    return names.length
+      ? `I found ${names.length} matching file${names.length === 1 ? "" : "s"}: ${formatDisplayList(names)}.`
+      : "I searched the files, but did not find a matching item.";
+  }
+
+  return `Done — ${result.capability} completed successfully.`;
+};
+
+
 type TimelineItem =
   | { kind: "message"; id: string; createdAt: string; message: PersistedChatMessage }
-  | { kind: "action"; id: string; createdAt: string; action: PersistedActionRecord };
+  | { kind: "action"; id: string; createdAt: string; action: PersistedActionRecord }
+  | { kind: "trace"; id: string; createdAt: string; trace: PersistedAgentTraceRecord };
 
 const AI_ASSISTANT_SYSTEM_TEXT =
   "Pi Agent can use registered desktop capabilities to inspect and operate this Windows clone. Visible mutating actions run through the replay queue.";
@@ -498,7 +636,11 @@ const AIAssistantComponent = () => {
 
   const sendEvent = useCallback((event: AgentProtocolClientEvent) => {
     const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      logClientAgentEvent("input", `${event.type}:dropped`, event);
+      return false;
+    }
+    logClientAgentEvent("input", event.type, event);
     socket.send(JSON.stringify(event));
     return true;
   }, []);
@@ -614,6 +756,19 @@ const AIAssistantComponent = () => {
             ...chat,
             updatedAt: result.completedAt,
             actions: upsertActionResult(chat.actions, result),
+            messages: result.ok
+              ? [
+                  ...chat.messages,
+                  {
+                    id: makeId("assistant-action-result"),
+                    role: "assistant" as const,
+                    createdAt: result.completedAt,
+                    text: summarizeActionResultForUser(result),
+                    status: "complete" as const,
+                    actionCallId: result.callId,
+                  },
+                ]
+              : chat.messages,
           }));
           sendEvent({ type: "action_result", result });
         })
@@ -628,6 +783,7 @@ const AIAssistantComponent = () => {
   const handleServerEvent = useCallback(
     (event: AgentProtocolServerEvent) => {
       const chatId = activeChatIdRef.current;
+      logClientAgentEvent("output", event.type, event);
 
       switch (event.type) {
         case "hello": {
@@ -670,6 +826,14 @@ const AIAssistantComponent = () => {
             ...chat,
             updatedAt: now(),
             messages: appendAssistantDelta(chat.messages, event.id, event.delta),
+          }));
+          return;
+        }
+        case "assistant_reasoning_delta": {
+          updateChat(chatId, (chat) => ({
+            ...chat,
+            updatedAt: now(),
+            messages: appendAssistantReasoning(chat.messages, event.id, event.delta),
           }));
           return;
         }
@@ -729,6 +893,14 @@ const AIAssistantComponent = () => {
               }),
             }));
           }
+          return;
+        }
+        case "agent_trace": {
+          updateChat(chatId, (chat) => ({
+            ...chat,
+            updatedAt: event.trace.createdAt,
+            traces: [...(chat.traces ?? []), event.trace],
+          }));
           return;
         }
         case "cancelled": {
@@ -823,10 +995,13 @@ const AIAssistantComponent = () => {
       });
 
       socket.addEventListener("message", (messageEvent) => {
+        const rawMessage = String(messageEvent.data);
+        logClientAgentEvent("raw", "websocket.message", rawMessage);
         try {
-          const parsed = JSON.parse(String(messageEvent.data)) as AgentProtocolServerEvent;
+          const parsed = parseAgentServerEvent(JSON.parse(rawMessage));
           handleServerEvent(parsed);
-        } catch {
+        } catch (error) {
+          logClientAgentEvent("output", "protocol.invalid_event", { error, rawMessage });
           setConnectionStatus("error");
           setConnectionMessage("Received an invalid Pi Agent protocol message");
         }
@@ -1002,6 +1177,12 @@ const AIAssistantComponent = () => {
         createdAt: action.createdAt,
         action,
       })),
+      ...(activeChat.traces ?? []).map((trace) => ({
+        kind: "trace" as const,
+        id: trace.id,
+        createdAt: trace.createdAt,
+        trace,
+      })),
     ].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }, [activeChat]);
 
@@ -1174,7 +1355,22 @@ const AIAssistantComponent = () => {
                     return (
                       <Message from={from} key={item.id}>
                         <MessageContent>
-                          <MessageResponse>{message.text ?? ""}</MessageResponse>
+                          {message.reasoning ? (
+                            <Reasoning
+                              className="w-full"
+                              defaultOpen
+                              isStreaming={message.status === "streaming"}
+                            >
+                              <ReasoningTrigger />
+                              <ReasoningContent>{message.reasoning}</ReasoningContent>
+                            </Reasoning>
+                          ) : null}
+                          {message.text || !message.reasoning ? (
+                            <MessageResponse>
+                              {message.text ??
+                                "Pi Agent finished without a visible response. Try asking again, or check the configured model/API key in Pi."}
+                            </MessageResponse>
+                          ) : null}
                           {message.status && message.status !== "complete" ? (
                             <Badge className="w-fit" variant="outline">
                               {message.status}
@@ -1182,6 +1378,28 @@ const AIAssistantComponent = () => {
                           ) : null}
                         </MessageContent>
                       </Message>
+                    );
+                  }
+
+                  if (item.kind === "trace") {
+                    const trace = item.trace;
+                    return (
+                      <ChainOfThought defaultOpen key={item.id}>
+                        <ChainOfThoughtHeader>{trace.title}</ChainOfThoughtHeader>
+                        <ChainOfThoughtContent>
+                          <ChainOfThoughtStep
+                            description={trace.detail}
+                            label={trace.title}
+                            status={
+                              trace.status === "active"
+                                ? "active"
+                                : trace.status === "pending"
+                                  ? "pending"
+                                  : "complete"
+                            }
+                          />
+                        </ChainOfThoughtContent>
+                      </ChainOfThought>
                     );
                   }
 
@@ -1199,62 +1417,121 @@ const AIAssistantComponent = () => {
                         : undefined;
 
                   return (
-                    <Tool defaultOpen={action.status !== "completed"} key={item.id}>
-                      <ToolHeader
-                        state={toolState}
-                        title={manifest?.title ?? action.call.capability}
-                        toolName={action.call.capability}
-                        type="dynamic-tool"
-                      />
-                      <ToolContent>
-                        {action.status === "waiting-confirmation" ? (
-                          <Confirmation
-                            approval={{ id: action.call.id }}
-                            state={toolState}
-                          >
-                            <ConfirmationTitle>
-                              {manifest?.description ?? action.call.capability}
-                            </ConfirmationTitle>
-                            <ConfirmationRequest>
-                              <p className="text-muted-foreground text-sm">
-                                This action needs confirmation before Pi Agent can run it.
-                              </p>
-                            </ConfirmationRequest>
-                            <ConfirmationActions>
-                              <ConfirmationAction
-                                onClick={() => resolveConfirmation(action.call.id, false)}
-                                variant="outline"
-                              >
-                                Deny
-                              </ConfirmationAction>
-                              <ConfirmationAction
-                                onClick={() => resolveConfirmation(action.call.id, true)}
-                              >
-                                Approve
-                              </ConfirmationAction>
-                            </ConfirmationActions>
-                          </Confirmation>
-                        ) : null}
-                        {action.result &&
-                        !action.result.ok &&
-                        action.result.error.code === "permission_denied" ? (
-                          <Confirmation
-                            approval={{ id: action.call.id, approved: false }}
-                            state="output-denied"
-                          >
-                            <ConfirmationTitle>
-                              {manifest?.description ?? action.call.capability}
-                            </ConfirmationTitle>
-                            <ConfirmationRejected>Denied</ConfirmationRejected>
-                          </Confirmation>
-                        ) : null}
-                        <ToolInput input={action.call.input} />
-                        <ToolOutput errorText={errorText} output={resultOutput} />
-                      </ToolContent>
-                    </Tool>
+                    <div className="space-y-2" key={item.id}>
+                      <ChainOfThought defaultOpen>
+                        <ChainOfThoughtHeader>Action chain</ChainOfThoughtHeader>
+                        <ChainOfThoughtContent>
+                          <ChainOfThoughtStep
+                            description={manifest?.description ?? action.call.capability}
+                            label={`Pi requested ${manifest?.title ?? action.call.capability}`}
+                            status="complete"
+                          />
+                          <ChainOfThoughtStep
+                            description={
+                              action.result?.ok
+                                ? summarizeActionResultForUser(action.result)
+                                : errorText
+                            }
+                            label={
+                              action.status === "waiting-confirmation"
+                                ? "Waiting for confirmation"
+                                : action.status === "running"
+                                  ? "Running visible desktop action"
+                                  : action.status === "completed"
+                                    ? "Action completed"
+                                    : action.status === "failed"
+                                      ? "Action failed"
+                                      : action.status === "cancelled"
+                                        ? "Action cancelled"
+                                        : "Queued for execution"
+                            }
+                            status={
+                              action.status === "completed"
+                                ? "complete"
+                                : action.status === "failed" || action.status === "cancelled"
+                                  ? "complete"
+                                  : action.status === "queued"
+                                    ? "pending"
+                                    : "active"
+                            }
+                          />
+                        </ChainOfThoughtContent>
+                      </ChainOfThought>
+                      <Tool defaultOpen>
+                        <ToolHeader
+                          state={toolState}
+                          title={manifest?.title ?? action.call.capability}
+                          toolName={action.call.capability}
+                          type="dynamic-tool"
+                        />
+                        <ToolContent>
+                          {action.status === "waiting-confirmation" ? (
+                            <Confirmation
+                              approval={{ id: action.call.id }}
+                              state={toolState}
+                            >
+                              <ConfirmationTitle>
+                                {manifest?.description ?? action.call.capability}
+                              </ConfirmationTitle>
+                              <ConfirmationRequest>
+                                <p className="text-muted-foreground text-sm">
+                                  This action needs confirmation before Pi Agent can run it.
+                                </p>
+                              </ConfirmationRequest>
+                              <ConfirmationActions>
+                                <ConfirmationAction
+                                  onClick={() => resolveConfirmation(action.call.id, false)}
+                                  variant="outline"
+                                >
+                                  Deny
+                                </ConfirmationAction>
+                                <ConfirmationAction
+                                  onClick={() => resolveConfirmation(action.call.id, true)}
+                                >
+                                  Approve
+                                </ConfirmationAction>
+                              </ConfirmationActions>
+                            </Confirmation>
+                          ) : null}
+                          {action.result &&
+                          !action.result.ok &&
+                          action.result.error.code === "permission_denied" ? (
+                            <Confirmation
+                              approval={{ id: action.call.id, approved: false }}
+                              state="output-denied"
+                            >
+                              <ConfirmationTitle>
+                                {manifest?.description ?? action.call.capability}
+                              </ConfirmationTitle>
+                              <ConfirmationRejected>Denied</ConfirmationRejected>
+                            </Confirmation>
+                          ) : null}
+                          <ToolInput input={action.call.input} />
+                          <ToolOutput errorText={errorText} output={resultOutput} />
+                        </ToolContent>
+                      </Tool>
+                    </div>
                   );
                 })
               )}
+              {isRunning ? (
+                <Message from="assistant">
+                  <MessageContent>
+                    <div
+                      className="flex items-center gap-2 text-muted-foreground"
+                      data-testid="ai-agent-working-indicator"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="size-2 rounded-full bg-primary motion-safe:animate-pulse"
+                      />
+                      <Shimmer as="span" className="text-sm">
+                        Pi Agent is working…
+                      </Shimmer>
+                    </div>
+                  </MessageContent>
+                </Message>
+              ) : null}
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>

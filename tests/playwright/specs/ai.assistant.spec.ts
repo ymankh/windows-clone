@@ -142,3 +142,105 @@ test("[ai.assistant.persistence] persists multiple local chats and resumes them 
   await expect(chatList.getByRole("button", { name: /^Seeded actions chat\b/ })).toBeVisible();
   await expect(page.getByText("Second seeded answer")).toBeVisible();
 });
+
+test("[ai.assistant.trace-raw-data-hidden] shows assistant text without exposing raw trace payloads", async ({ page }) => {
+  await page.addInitScript(
+    ({ activeChatKey, chatSessionsKey }) => {
+      const createdAt = "2026-06-28T00:00:00.000Z";
+      const traceAt = "2026-06-28T00:00:01.000Z";
+      const assistantAt = "2026-06-28T00:00:02.000Z";
+
+      localStorage.setItem(
+        chatSessionsKey,
+        JSON.stringify([
+          {
+            id: "chat-raw-trace",
+            title: "Seeded raw trace chat",
+            createdAt,
+            updatedAt: assistantAt,
+            piSessionId: "pi-raw-trace",
+            permissionMode: "auto-safe",
+            messages: [
+              {
+                id: "message-raw-trace-user",
+                role: "user",
+                createdAt,
+                text: "Summarize the visible desktop state.",
+                status: "complete",
+              },
+              {
+                id: "message-raw-trace-assistant",
+                role: "assistant",
+                createdAt: assistantAt,
+                reasoning:
+                  "I read the parsed Pi Agent event stream and kept only the user-facing answer.",
+                text: "The Pi Agent found two open windows and is ready for the next step.",
+                status: "complete",
+              },
+            ],
+            actions: [],
+            traces: [
+              {
+                id: "trace-raw-protocol",
+                createdAt: traceAt,
+                title: "Pi Agent protocol event",
+                detail: "Raw protocol payload was captured for console diagnostics.",
+                status: "complete",
+                data: {
+                  type: "message_update",
+                  assistantMessageEvent: {
+                    type: "toolcall",
+                    text_delta: "RAW_TEXT_DELTA_SHOULD_NOT_RENDER",
+                    thinking_delta: "RAW_THINKING_DELTA_SHOULD_NOT_RENDER",
+                    toolcall: {
+                      id: "tool-call-hidden",
+                      name: "windows.listApps",
+                      arguments: {
+                        query: "RAW_TOOL_ARGUMENT_SHOULD_NOT_RENDER",
+                      },
+                    },
+                    content: [
+                      {
+                        type: "thinking",
+                        text: "RAW_CONTENT_THINKING_SHOULD_NOT_RENDER",
+                      },
+                    ],
+                  },
+                  rawProtocolEnvelope: {
+                    internalControlToken: "RAW_PROTOCOL_CONTROL_TOKEN",
+                    nested: {
+                      jsonKeySentinel: "RAW_JSON_KEY_SENTINEL",
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ])
+      );
+      localStorage.setItem(activeChatKey, "chat-raw-trace");
+    },
+    { activeChatKey: ACTIVE_CHAT_KEY, chatSessionsKey: CHAT_SESSIONS_KEY }
+  );
+
+  await openDesktop(page);
+  await openDesktopApp(page, "AI Assistant");
+  await waitForWindow(page, "AI Assistant");
+
+  const messageList = page.getByTestId("ai-message-list");
+
+  await expect(messageList).toBeVisible();
+  await expect(
+    messageList.getByText("The Pi Agent found two open windows and is ready for the next step.")
+  ).toBeVisible();
+  await expect(
+    messageList.getByText(
+      "I read the parsed Pi Agent event stream and kept only the user-facing answer."
+    )
+  ).toBeVisible();
+  await expect(messageList).not.toContainText("RAW_PROTOCOL_CONTROL_TOKEN");
+  await expect(messageList).not.toContainText("RAW_TEXT_DELTA_SHOULD_NOT_RENDER");
+  await expect(messageList).not.toContainText("text_delta");
+  await expect(messageList).not.toContainText("assistantMessageEvent");
+  await expect(messageList).not.toContainText("rawProtocolEnvelope");
+});

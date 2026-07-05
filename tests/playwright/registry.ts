@@ -51,6 +51,14 @@ export const testRegistry: TestDefinition[] = [
     details: "Creates multiple chats, verifies localStorage session metadata/transcript/action shape, and confirms chat list survives reload.",
   },
   {
+    id: "ai.assistant.trace-raw-data-hidden",
+    feature: "AI Assistant",
+    title: "Hide raw Pi Agent trace payloads from chat history",
+    status: "implemented",
+    spec: "tests/playwright/specs/ai.assistant.spec.ts",
+    details: "Seeds a persisted AI Assistant chat with an assistant answer plus raw nested Pi Agent trace data and verifies the chat shows parsed text without exposing protocol JSON.",
+  },
+  {
     id: "window.minimize",
     feature: "Window manager",
     title: "Minimize windows to the taskbar",

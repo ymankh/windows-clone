@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const AGENT_PROTOCOL_VERSION = 1;
 
 export const CAPABILITY_SAFETY_LEVELS = [
@@ -158,6 +160,7 @@ export type PersistedChatMessage = {
   readonly createdAt: string;
   readonly text?: string;
   readonly status?: "streaming" | "complete" | "error" | "cancelled";
+  readonly reasoning?: string;
   readonly actionCallId?: string;
   readonly metadata?: SerializableJsonObject;
 };
@@ -170,6 +173,16 @@ export type PersistedActionRecord = {
   readonly updatedAt: string;
 };
 
+export type PersistedAgentTraceRecord = {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly title: string;
+  readonly detail?: string;
+  readonly status?: "pending" | "active" | "complete" | "error";
+  readonly data?: SerializableJsonValue;
+};
+
+
 export type PersistedChatSession = {
   readonly id: string;
   readonly title: string;
@@ -179,6 +192,7 @@ export type PersistedChatSession = {
   readonly permissionMode: PermissionMode;
   readonly messages: readonly PersistedChatMessage[];
   readonly actions: readonly PersistedActionRecord[];
+  readonly traces?: readonly PersistedAgentTraceRecord[];
   readonly metadata?: SerializableJsonObject;
 };
 
@@ -263,6 +277,11 @@ export type AgentServerEvent =
       readonly delta: string;
     }
   | {
+      readonly type: "assistant_reasoning_delta";
+      readonly id: string;
+      readonly delta: string;
+    }
+  | {
       readonly type: "assistant_message_done";
       readonly message: PersistedChatMessage;
     }
@@ -291,6 +310,10 @@ export type AgentServerEvent =
       readonly reason?: string;
     }
   | {
+      readonly type: "agent_trace";
+      readonly trace: PersistedAgentTraceRecord;
+    }
+  | {
       readonly type: "connection.status";
       readonly status: ConnectionStatus;
       readonly message?: string;
@@ -299,6 +322,290 @@ export type AgentProtocolClientEvent = AgentClientEvent;
 
 export type AgentProtocolServerEvent = AgentServerEvent;
 
+
+export const serializableJsonValueSchema: z.ZodType<SerializableJsonValue> =
+  z.lazy(() =>
+    z.union([
+      z.string(),
+      z.number().finite(),
+      z.boolean(),
+      z.null(),
+      z.array(serializableJsonValueSchema),
+      z.record(z.string(), serializableJsonValueSchema),
+    ])
+  );
+
+export const serializableJsonObjectSchema = z.record(
+  z.string(),
+  serializableJsonValueSchema
+) satisfies z.ZodType<SerializableJsonObject>;
+
+export const jsonSchemaLikeSchema = serializableJsonObjectSchema;
+
+export const permissionModeSchema = z.enum(PERMISSION_MODES);
+export const capabilitySafetySchema = z.enum(CAPABILITY_SAFETY_LEVELS);
+export const capabilityExecutionModeSchema = z.enum(CAPABILITY_EXECUTION_MODES);
+export const actionStatusKindSchema = z.enum(ACTION_STATUS_KINDS);
+
+export const capabilityNameSchema = z
+  .string()
+  .refine((value): value is CapabilityName => value.includes("."), {
+    message: "Capability names must be app-qualified, e.g. notes.readCurrent",
+  });
+
+export const agentCapabilityManifestSchema = z.object({
+  name: capabilityNameSchema,
+  appId: z.string(),
+  title: z.string().optional(),
+  description: z.string(),
+  safety: capabilitySafetySchema,
+  execution: capabilityExecutionModeSchema,
+  inputSchema: jsonSchemaLikeSchema,
+  resultSchema: jsonSchemaLikeSchema.optional(),
+});
+
+export const actionErrorSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  retryable: z.boolean().optional(),
+  details: serializableJsonValueSchema.optional(),
+});
+
+export const agentActionCallSchema = z.object({
+  id: z.string(),
+  capability: capabilityNameSchema,
+  input: serializableJsonValueSchema,
+  sessionId: z.string().optional(),
+  messageId: z.string().optional(),
+  createdAt: z.string(),
+});
+
+const actionExecutionSuccessSchema = z.object({
+  ok: z.literal(true),
+  data: serializableJsonValueSchema.optional(),
+  message: z.string().optional(),
+});
+
+const actionExecutionFailureSchema = z.object({
+  ok: z.literal(false),
+  error: actionErrorSchema,
+});
+
+export const agentActionResultSchema = z
+  .discriminatedUnion("ok", [
+    actionExecutionSuccessSchema,
+    actionExecutionFailureSchema,
+  ])
+  .and(
+    z.object({
+      callId: z.string(),
+      capability: capabilityNameSchema,
+      sessionId: z.string().optional(),
+      completedAt: z.string(),
+    })
+  );
+
+export const actionStatusEventSchema = z.object({
+  callId: z.string(),
+  capability: capabilityNameSchema,
+  status: actionStatusKindSchema,
+  timestamp: z.string(),
+  message: z.string().optional(),
+  error: actionErrorSchema.optional(),
+});
+
+export const persistedChatMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["system", "user", "assistant", "tool"]),
+  createdAt: z.string(),
+  text: z.string().optional(),
+  status: z.enum(["streaming", "complete", "error", "cancelled"]).optional(),
+  reasoning: z.string().optional(),
+  actionCallId: z.string().optional(),
+  metadata: serializableJsonObjectSchema.optional(),
+});
+
+export const persistedActionRecordSchema = z.object({
+  call: agentActionCallSchema,
+  result: agentActionResultSchema.optional(),
+  status: actionStatusKindSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const persistedAgentTraceRecordSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  title: z.string(),
+  detail: z.string().optional(),
+  status: z.enum(["pending", "active", "complete", "error"]).optional(),
+  data: serializableJsonValueSchema.optional(),
+});
+
+export const persistedChatSessionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  piSessionId: z.string().optional(),
+  permissionMode: permissionModeSchema,
+  messages: z.array(persistedChatMessageSchema),
+  actions: z.array(persistedActionRecordSchema),
+  traces: z.array(persistedAgentTraceRecordSchema).optional(),
+  metadata: serializableJsonObjectSchema.optional(),
+});
+
+export const agentClientEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("hello"),
+    protocolVersion: z.literal(AGENT_PROTOCOL_VERSION),
+    clientId: z.string(),
+    permissionMode: permissionModeSchema,
+    capabilities: z.array(agentCapabilityManifestSchema),
+  }),
+  z.object({
+    type: z.literal("capabilities"),
+    protocolVersion: z.literal(AGENT_PROTOCOL_VERSION),
+    permissionMode: permissionModeSchema,
+    capabilities: z.array(agentCapabilityManifestSchema),
+    sessionId: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("session.resume"),
+    chatId: z.string(),
+    sessionId: z.string().optional(),
+    transcript: z.array(persistedChatMessageSchema).optional(),
+  }),
+  z.object({
+    type: z.literal("user_prompt"),
+    id: z.string(),
+    chatId: z.string(),
+    sessionId: z.string().optional(),
+    prompt: z.string(),
+    createdAt: z.string(),
+  }),
+  z.object({
+    type: z.literal("action_status"),
+    status: actionStatusEventSchema,
+  }),
+  z.object({
+    type: z.literal("action_result"),
+    result: agentActionResultSchema,
+  }),
+  z.object({
+    type: z.literal("cancel"),
+    id: z.string(),
+    sessionId: z.string().optional(),
+    reason: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("connection.status"),
+    status: z.enum([
+      "connecting",
+      "connected",
+      "disconnected",
+      "reconnecting",
+      "error",
+    ]),
+    message: z.string().optional(),
+  }),
+]);
+
+export const agentServerEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("hello"),
+    protocolVersion: z.literal(AGENT_PROTOCOL_VERSION),
+    serverId: z.string().optional(),
+    sessionId: z.string().optional(),
+    acceptedCapabilities: z.array(capabilityNameSchema).optional(),
+  }),
+  z.object({
+    type: z.literal("session.resumed"),
+    chatId: z.string(),
+    sessionId: z.string(),
+  }),
+  z.object({
+    type: z.literal("assistant_message_start"),
+    id: z.string(),
+    sessionId: z.string().optional(),
+    createdAt: z.string(),
+  }),
+  z.object({
+    type: z.literal("assistant_text_delta"),
+    id: z.string(),
+    delta: z.string(),
+  }),
+  z.object({
+    type: z.literal("assistant_reasoning_delta"),
+    id: z.string(),
+    delta: z.string(),
+  }),
+  z.object({
+    type: z.literal("assistant_message_done"),
+    message: persistedChatMessageSchema,
+  }),
+  z.object({
+    type: z.literal("assistant_message_error"),
+    id: z.string().optional(),
+    error: actionErrorSchema,
+  }),
+  z.object({
+    type: z.literal("action_call"),
+    call: agentActionCallSchema,
+  }),
+  z.object({
+    type: z.literal("action_status"),
+    status: actionStatusEventSchema,
+  }),
+  z.object({
+    type: z.literal("action_error"),
+    callId: z.string().optional(),
+    error: actionErrorSchema,
+  }),
+  z.object({
+    type: z.literal("cancelled"),
+    id: z.string(),
+    sessionId: z.string().optional(),
+    reason: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("agent_trace"),
+    trace: persistedAgentTraceRecordSchema,
+  }),
+  z.object({
+    type: z.literal("connection.status"),
+    status: z.enum([
+      "connecting",
+      "connected",
+      "disconnected",
+      "reconnecting",
+      "error",
+    ]),
+    message: z.string().optional(),
+  }),
+]);
+
+export const parseAgentClientEvent = (value: unknown): AgentClientEvent =>
+  agentClientEventSchema.parse(value) as AgentClientEvent;
+
+export const parseAgentServerEvent = (value: unknown): AgentServerEvent =>
+  agentServerEventSchema.parse(value) as AgentServerEvent;
+
+export const parsePersistedChatMessage = (
+  value: unknown
+): PersistedChatMessage => persistedChatMessageSchema.parse(value);
+
+export const parsePersistedActionRecord = (
+  value: unknown
+): PersistedActionRecord => persistedActionRecordSchema.parse(value);
+
+export const parsePersistedAgentTraceRecord = (
+  value: unknown
+): PersistedAgentTraceRecord => persistedAgentTraceRecordSchema.parse(value);
+
+export const parsePersistedChatSession = (
+  value: unknown
+): PersistedChatSession => persistedChatSessionSchema.parse(value);
 
 export const toCapabilityManifest = ({
   name,

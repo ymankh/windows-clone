@@ -148,7 +148,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               scale: 1,
               y: 0,
             }}
-            exit={{ opacity: 0, scale: 0.92, y: 16 }}
+            exit={{ opacity: 0, scale: 0.75, y: 40 }}
             transition={{
               duration: 0.18,
               ease: [0.22, 0.8, 0.36, 1],

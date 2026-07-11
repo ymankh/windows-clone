@@ -111,14 +111,18 @@ export const useWindowInteractions = ({
   const splitResizeActive = useRef(false);
   const layoutMode = windowData.layoutMode;
 
+  const startBoundsAnimation = useCallback(() => {
+    if (dockAnimationTimer.current) clearTimeout(dockAnimationTimer.current);
+    setIsDockAnimating(true);
+    dockAnimationTimer.current = setTimeout(
+      () => setIsDockAnimating(false),
+      DOCK_ANIMATION_DURATION_MS
+    );
+  }, []);
+
   const applyDock = useCallback(
     (target: Exclude<DockTarget, null>) => {
-      if (dockAnimationTimer.current) clearTimeout(dockAnimationTimer.current);
-      setIsDockAnimating(true);
-      dockAnimationTimer.current = setTimeout(
-        () => setIsDockAnimating(false),
-        DOCK_ANIMATION_DURATION_MS
-      );
+      startBoundsAnimation();
       const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
 
       if (target === DockTargets.top) {
@@ -168,6 +172,7 @@ export const useWindowInteractions = ({
       id,
       setHorizontalDockSplit,
       setWindowLayoutMode,
+      startBoundsAnimation,
       updateWindowBounds,
       windowData,
     ]
@@ -477,6 +482,7 @@ export const useWindowInteractions = ({
   );
 
   const toggleMaximize = useCallback(() => {
+    startBoundsAnimation();
     if (
       layoutMode === WindowLayoutModes.maximized &&
       previousBoundsRef.current
@@ -501,7 +507,14 @@ export const useWindowInteractions = ({
       height: Math.max(MIN_WINDOW_HEIGHT, desktopHeight),
     });
     setWindowLayoutMode(id, WindowLayoutModes.maximized);
-  }, [id, layoutMode, setWindowLayoutMode, updateWindowBounds, windowData]);
+  }, [
+    id,
+    layoutMode,
+    setWindowLayoutMode,
+    startBoundsAnimation,
+    updateWindowBounds,
+    windowData,
+  ]);
 
   useEffect(() => {
     if (layoutMode !== WindowLayoutModes.maximized) return;

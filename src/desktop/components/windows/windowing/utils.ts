@@ -50,3 +50,25 @@ export const getLeftDockWidth = (
 export const isDockedLayout = (layoutMode: WindowLayoutMode) =>
   layoutMode === WindowLayoutModes.dockedLeft ||
   layoutMode === WindowLayoutModes.dockedRight;
+
+export const getRenderedDockSplit = (
+  target: "left" | "right",
+  currentWindowId: string,
+  viewportWidth: number
+) => {
+  if (viewportWidth <= 0 || typeof document === "undefined") return null;
+  const oppositeLayout =
+    target === "left"
+      ? WindowLayoutModes.dockedRight
+      : WindowLayoutModes.dockedLeft;
+  const oppositeWindow = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      `[data-window-layout-mode="${oppositeLayout}"]`
+    )
+  ).find((element) => element.dataset.windowId !== currentWindowId);
+
+  if (!oppositeWindow) return null;
+  const bounds = oppositeWindow.getBoundingClientRect();
+  const boundary = target === "left" ? bounds.left : bounds.right;
+  return clampDockSplitRatio(boundary / viewportWidth);
+};

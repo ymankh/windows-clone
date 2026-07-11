@@ -155,6 +155,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
             }}
             className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
             data-window-id={id}
+            data-window-layout-mode={layoutMode}
             style={{
               zIndex: windowData.zIndex,
               left: animatedLeft,

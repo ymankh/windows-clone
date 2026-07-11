@@ -38,6 +38,9 @@ test("[window.dock-preview] previews the available side of an existing split", a
   const previewBox = await preview.boundingBox();
   const viewportWidth = await page.evaluate(() => window.innerWidth);
   expect(previewBox?.width ?? 0).toBeGreaterThan(viewportWidth * 0.6);
+  const browserBounds = await browserWindow.boundingBox();
+  expect(Math.abs((previewBox?.x ?? 0) + (previewBox?.width ?? 0) - (browserBounds?.x ?? 0)))
+    .toBeLessThan(2);
   await page.mouse.up();
 });
 

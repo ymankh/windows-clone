@@ -1,7 +1,6 @@
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import useWindowsManagerStore, { WindowLayoutModes } from "@/desktop/stores/WindowsStore";
-import { getDesktopBounds, getLeftDockWidth } from "./windowing/utils";
+import { getDesktopBounds, getLeftDockWidth, getRenderedDockSplit } from "./windowing/utils";
 import { DockTargets, type DockTarget } from "./windowing/types";
 
 type WindowDockPreviewProps = {
@@ -10,7 +9,6 @@ type WindowDockPreviewProps = {
 };
 
 const WindowDockPreview = ({ windowId, dockPreview }: WindowDockPreviewProps) => {
-  const windows = useWindowsManagerStore((state) => state.windows);
   if (!dockPreview) return null;
   if (typeof document === "undefined") return null;
 
@@ -30,21 +28,8 @@ const WindowDockPreview = ({ windowId, dockPreview }: WindowDockPreviewProps) =>
     );
   }
 
-  const oppositeLayout =
-    dockPreview === DockTargets.left
-      ? WindowLayoutModes.dockedRight
-      : WindowLayoutModes.dockedLeft;
-  const oppositeWindow = windows.find(
-    (candidate) =>
-      candidate.id !== windowId &&
-      !candidate.isMinimized &&
-      candidate.layoutMode === oppositeLayout
-  );
-  const availableSplit = oppositeWindow
-    ? dockPreview === DockTargets.left
-      ? oppositeWindow.x / viewportWidth
-      : (oppositeWindow.x + oppositeWindow.width) / viewportWidth
-    : 0.5;
+  const availableSplit =
+    getRenderedDockSplit(dockPreview, windowId, viewportWidth) ?? 0.5;
   const leftWidth = getLeftDockWidth(viewportWidth, availableSplit);
   const previewWidth =
     dockPreview === DockTargets.left ? leftWidth : Math.max(0, viewportWidth - leftWidth);

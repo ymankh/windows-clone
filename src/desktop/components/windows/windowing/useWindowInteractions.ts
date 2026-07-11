@@ -22,6 +22,7 @@ import {
   getDesktopBounds,
   getDockTarget,
   getLeftDockWidth,
+  getRenderedDockSplit,
 } from "./utils";
 
 type UseWindowInteractionsOptions = {
@@ -137,25 +138,7 @@ export const useWindowInteractions = ({
         return;
       }
 
-      const oppositeLayout =
-        target === DockTargets.left
-          ? WindowLayoutModes.dockedRight
-          : WindowLayoutModes.dockedLeft;
-      const oppositeWindow = useWindowsManagerStore
-        .getState()
-        .windows.find(
-          (candidate) =>
-            candidate.id !== id &&
-            !candidate.isMinimized &&
-            candidate.layoutMode === oppositeLayout
-        );
-      const dockSplit = oppositeWindow
-        ? clampDockSplitRatio(
-            target === DockTargets.left
-              ? oppositeWindow.x / viewportWidth
-              : (oppositeWindow.x + oppositeWindow.width) / viewportWidth
-          )
-        : 0.5;
+      const dockSplit = getRenderedDockSplit(target, id, viewportWidth) ?? 0.5;
       setHorizontalDockSplit(dockSplit);
 
       previousBoundsRef.current = {

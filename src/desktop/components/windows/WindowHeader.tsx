@@ -4,6 +4,7 @@ import { WindowLayoutModes, type WindowLayoutMode } from "@/desktop/stores/Windo
 type WindowHeaderProps = {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   title: string;
+  titleId?: string;
   layoutMode: WindowLayoutMode;
   onDragPointerDown: React.PointerEventHandler<HTMLDivElement>;
   onDragPointerMove: React.PointerEventHandler<HTMLDivElement>;
@@ -17,6 +18,7 @@ type WindowHeaderProps = {
 const WindowHeader = ({
   icon: IconComponent,
   title,
+  titleId,
   layoutMode,
   onDragPointerDown,
   onDragPointerMove,
@@ -38,7 +40,7 @@ const WindowHeader = ({
       <span className="text-muted-foreground">
         <IconComponent className="h-4 w-4" />
       </span>
-      <span className="truncate">{title}</span>
+      <span id={titleId} className="truncate">{title}</span>
     </span>
 
     <div className="flex items-center gap-2" data-no-drag="true">

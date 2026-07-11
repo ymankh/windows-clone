@@ -1,7 +1,9 @@
 import { Globe } from "lucide-react";
+import { lazy } from "react";
 import type { DesktopApp } from "../types";
-import BrowserComponent from "./Component";
 import { BrowserCommandTypes } from "./constants";
+
+const BrowserComponent = lazy(() => import("./Component"));
 
 const createBrowserMenubar = (windowId: string) => [
   {

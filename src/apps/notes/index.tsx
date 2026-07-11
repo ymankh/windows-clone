@@ -1,9 +1,11 @@
 import { FileText } from "lucide-react";
+import { lazy } from "react";
 import type { DesktopApp } from "../types";
 import { FileTypes } from "../fileTypes";
-import NotesComponent from "./Component";
 import { NotesEditorActions, NotesFileActions } from "./constants";
 import { notesFileDataSchema } from "./schema";
+
+const NotesComponent = lazy(() => import("./Component"));
 
 const createNotesMenubar = (windowId: string) => {
   const inputId = `notes-md-input-${windowId}`;

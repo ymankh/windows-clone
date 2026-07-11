@@ -1,10 +1,9 @@
-import type { ComponentType, ReactNode, SVGProps } from "react";
+import type { ComponentType, SVGProps } from "react";
 
 export type WindowProps = {
   id: string;
   title: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
-  children: ReactNode;
 };
 
 export const DockTargets = {

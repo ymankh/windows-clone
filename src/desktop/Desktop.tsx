@@ -48,7 +48,8 @@ const Desktop = ({ apps }: DesktopProps) => {
       id: "personalization",
       title: "Personalization",
       icon: Palette,
-      component: <PersonalizationWindow />,
+      contentComponent: PersonalizationWindow,
+      contentProps: {},
       width: 860,
       height: 560,
     });
@@ -167,9 +168,7 @@ const Desktop = ({ apps }: DesktopProps) => {
       </DesktopContextMenu>
 
       {windows.map((win) => (
-        <Window key={win.id} id={win.id} title={win.title} icon={win.icon}>
-          {win.component}
-        </Window>
+        <Window key={win.id} id={win.id} title={win.title} icon={win.icon} />
       ))}
 
       <Taskbar />

@@ -1,4 +1,5 @@
-import type { ComponentType, ReactNode, SVGProps } from "react";
+import type { ComponentType, SVGProps } from "react";
+import type { AppWindowComponentProps } from "@/apps/types";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import {
@@ -51,7 +52,8 @@ export interface WindowState {
   isMinimized: boolean;
   zIndex: number;
   icon: WindowIcon;
-  component: ReactNode;
+  contentComponent: ComponentType<AppWindowComponentProps>;
+  contentProps: AppWindowComponentProps;
   x: number;
   y: number;
   width: number;
@@ -66,7 +68,8 @@ type OpenWindowPayload = {
   id: string;
   title: string;
   icon: WindowIcon;
-  component: ReactNode;
+  contentComponent: ComponentType<AppWindowComponentProps>;
+  contentProps?: AppWindowComponentProps;
   x?: number;
   y?: number;
   width?: number;
@@ -124,7 +127,8 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
         if (existingWindow) {
           existingWindow.title = win.title;
           existingWindow.icon = win.icon;
-          existingWindow.component = win.component;
+          existingWindow.contentComponent = win.contentComponent;
+          existingWindow.contentProps = win.contentProps ?? {};
           existingWindow.isMinimized = false;
           existingWindow.zIndex = zIndex;
           if (win.x !== undefined) existingWindow.x = win.x;
@@ -146,6 +150,7 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           isMinimized: false,
           zIndex,
           icon: win.icon,
+          contentProps: win.contentProps ?? {},
           x: win.x ?? fallbackX,
           y: win.y ?? fallbackY,
           width: fallbackWidth,

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import type { DesktopApp } from "./types";
 import type { WindowMenu } from "@/desktop/stores/WindowsStore";
 import type { FileType } from "./fileTypes";
@@ -6,7 +5,6 @@ import type { FileType } from "./fileTypes";
 export type BuildAppWindowOptions = {
   windowId?: string;
   title?: string;
-  component?: ReactNode;
   menubar?: WindowMenu[];
   fileContext?: {
     name: string;
@@ -43,10 +41,8 @@ export const buildAppWindow = (
     id: windowId,
     title: options.title ?? app.title,
     icon: app.icon,
-    component:
-      options.component ?? (
-        <app.Component windowId={windowId} fileContext={validatedFileContext} />
-      ),
+    contentComponent: app.Component,
+    contentProps: { windowId, fileContext: validatedFileContext },
     minWidth: app.minSize?.width,
     minHeight: app.minSize?.height,
     menubar: options.menubar ?? app.createMenubar?.(windowId) ?? app.menubar,

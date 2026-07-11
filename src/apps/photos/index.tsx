@@ -1,9 +1,11 @@
 import { Image } from "lucide-react";
+import { lazy } from "react";
 import type { DesktopApp } from "../types";
 import { FileTypes } from "../fileTypes";
-import PhotosComponent from "./Component";
 import { PhotosCommandTypes } from "./constants";
 import { imageFileDataSchema } from "./schema";
+
+const PhotosComponent = lazy(() => import("./Component"));
 
 const createPhotosMenubar = (windowId: string) => [
   {

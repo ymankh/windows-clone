@@ -146,14 +146,16 @@ export const testRegistry: TestDefinition[] = [
     id: "notes.file.open",
     feature: "Notes",
     title: "Open markdown or json notes",
-    status: "planned",
+    status: "implemented",
+    spec: "tests/playwright/specs/notes.files.spec.ts",
     details: "Verify importing a supported note file updates the editor content.",
   },
   {
     id: "notes.file.save-markdown",
     feature: "Notes",
     title: "Save notes as markdown",
-    status: "planned",
+    status: "implemented",
+    spec: "tests/playwright/specs/notes.files.spec.ts",
     details: "Verify Save as Markdown triggers the expected download.",
   },
   {

@@ -19,6 +19,14 @@ export const testRegistry: TestDefinition[] = [
     details: "Opens Notes and verifies the window position changes after a drag gesture.",
   },
   {
+    id: "window.dock-preview",
+    feature: "Window manager",
+    title: "Preview available docking space",
+    status: "implemented",
+    spec: "tests/playwright/specs/window.dock-preview.spec.ts",
+    details: "Verify previews honor an active split and stale splits reset for a new pair.",
+  },
+  {
     id: "window.dock-resize",
     feature: "Window manager",
     title: "Resize a snapped window pair",

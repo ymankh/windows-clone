@@ -128,13 +128,28 @@ export const useWindowInteractions = ({
         return;
       }
 
+      const oppositeLayout =
+        target === DockTargets.left
+          ? WindowLayoutModes.dockedRight
+          : WindowLayoutModes.dockedLeft;
+      const hasOppositeWindow = useWindowsManagerStore
+        .getState()
+        .windows.some(
+          (candidate) =>
+            candidate.id !== id &&
+            !candidate.isMinimized &&
+            candidate.layoutMode === oppositeLayout
+        );
+      const dockSplit = hasOppositeWindow ? horizontalDockSplit : 0.5;
+      if (!hasOppositeWindow) setHorizontalDockSplit(dockSplit);
+
       previousBoundsRef.current = {
         x: windowData.x,
         y: windowData.y,
         width: windowData.width,
         height: windowData.height,
       };
-      const leftWidth = getLeftDockWidth(viewportWidth, horizontalDockSplit);
+      const leftWidth = getLeftDockWidth(viewportWidth, dockSplit);
       const width =
         target === DockTargets.left ? leftWidth : Math.max(0, viewportWidth - leftWidth);
 
@@ -151,7 +166,14 @@ export const useWindowInteractions = ({
           : WindowLayoutModes.dockedRight
       );
     },
-    [horizontalDockSplit, id, setWindowLayoutMode, updateWindowBounds, windowData]
+    [
+      horizontalDockSplit,
+      id,
+      setHorizontalDockSplit,
+      setWindowLayoutMode,
+      updateWindowBounds,
+      windowData,
+    ]
   );
 
   const resetDragState = useCallback(() => {

@@ -73,7 +73,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     >
       {!isClosing && !windowData.isMinimized ? (
         <>
-          <WindowDockPreview dockPreview={dockPreview} />
+          <WindowDockPreview windowId={id} dockPreview={dockPreview} />
           {isResizing ? (
             <div
               className="fixed inset-0 z-[10001] cursor-ew-resize"

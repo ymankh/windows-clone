@@ -7,4 +7,5 @@ export const FilesApp: DesktopApp = {
   title: "Files",
   icon: Folder,
   Component: FilesComponent,
+  minSize: { width: 560, height: 360 },
 };

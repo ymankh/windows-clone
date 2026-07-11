@@ -46,6 +46,7 @@ export const MusicApp: DesktopApp = {
   title: "Music",
   icon: Music4,
   Component: MusicComponent,
+  minSize: { width: 420, height: 300 },
   createMenubar: createMusicMenubar,
   fileCapabilities: [{ fileType: FileTypes.audio, schema: audioFileDataSchema }],
 };

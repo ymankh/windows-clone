@@ -61,6 +61,7 @@ export const PhotosApp: DesktopApp = {
   title: "Photos",
   icon: Image,
   Component: PhotosComponent,
+  minSize: { width: 400, height: 300 },
   createMenubar: createPhotosMenubar,
   fileCapabilities: [{ fileType: FileTypes.image, schema: imageFileDataSchema }],
 };

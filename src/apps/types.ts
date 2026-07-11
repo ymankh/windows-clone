@@ -22,6 +22,7 @@ export type DesktopApp = {
   title: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   Component: ComponentType<AppWindowComponentProps>;
+  minSize?: { width: number; height: number };
   createMenubar?: (windowId: string) => WindowMenu[];
   fileCapabilities?: AppFileCapability[];
   menubar?: WindowMenu[];

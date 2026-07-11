@@ -1,232 +1,24 @@
-import { FileText, Folder as FolderIcon, Image as ImageIcon, Music } from "lucide-react";
-import { type TreeDataItem } from "@/components/tree-view";
-import { FileTypes } from "@/apps/fileTypes";
+import { useMemo, useState } from "react";
 import { Split } from "@/components/ui/split";
+import { desktopApps } from "@/apps";
+import { buildAppWindow } from "@/apps/windowBuilder";
+import { toAppInstanceId } from "@/apps/windowing";
+import useWindowsManagerStore from "@/desktop/stores/WindowsStore";
 import { FilesGrid } from "./components/FilesGrid";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import {
-  FileEntryTypes,
   type FileEntry,
   type FolderItem,
   type OpenWithOption,
   type Selection,
 } from "./components/types";
-import { desktopApps } from "@/apps";
-import { buildAppWindow } from "@/apps/windowBuilder";
-import { toAppInstanceId } from "@/apps/windowing";
-import useWindowsManagerStore from "@/desktop/stores/WindowsStore";
-import { useMemo, useState } from "react";
-
-const folderTree: TreeDataItem[] = [
-  {
-    id: "home",
-    name: "Home",
-    icon: FolderIcon,
-    children: [
-      {
-        id: "documents",
-        name: "Documents",
-        icon: FolderIcon,
-        children: [
-          { id: "reports", name: "Reports", icon: FolderIcon },
-          { id: "invoices", name: "Invoices", icon: FolderIcon },
-        ],
-      },
-      {
-        id: "media",
-        name: "Media",
-        icon: FolderIcon,
-        children: [
-          {
-            id: "photos",
-            name: "Photos",
-            icon: FolderIcon,
-            children: [
-              { id: "vacation", name: "Vacation", icon: FolderIcon },
-              { id: "headshots", name: "Headshots", icon: FolderIcon },
-            ],
-          },
-          { id: "music", name: "Music", icon: FolderIcon },
-        ],
-      },
-      { id: "downloads", name: "Downloads", icon: FolderIcon },
-      { id: "archive", name: "Archive", icon: FolderIcon },
-    ],
-  },
-];
-
-const folderIndex = new Map<string, { name: string; parent?: string }>();
-
-const indexTree = (nodes: TreeDataItem[], parentId?: string) => {
-  nodes.forEach((node) => {
-    folderIndex.set(node.id, { name: node.name, parent: parentId });
-    if (node.children) indexTree(node.children, node.id);
-  });
-};
-
-indexTree(folderTree);
-
-const folderContents: Record<string, FolderItem[]> = {
-  home: [
-    { name: "Documents", type: FileEntryTypes.folder, targetId: "documents" },
-    { name: "Media", type: FileEntryTypes.folder, targetId: "media" },
-    { name: "Downloads", type: FileEntryTypes.folder, targetId: "downloads" },
-    { name: "Archive", type: FileEntryTypes.folder, targetId: "archive" },
-  ],
-  documents: [
-    {
-      name: "Notes.md",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.notes,
-      meta: "12 KB",
-      icon: FileText,
-      data: { text: "# Notes\n\nThis note came from Explorer file data." },
-    },
-    {
-      name: "Project-Proposal.docx",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.binary,
-      meta: "84 KB",
-      icon: FileText,
-      data: { text: "Project Proposal draft content." },
-    },
-    {
-      name: "Budget.xlsx",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.binary,
-      meta: "32 KB",
-      icon: FileText,
-      data: { text: "Budget summary in plain text format." },
-    },
-  ],
-  reports: [
-    {
-      name: "Q1-Report.pdf",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.pdf,
-      meta: "1.2 MB",
-      data: { url: "/pdfs/resume.pdf" },
-    },
-    {
-      name: "Q2-Report.pdf",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.pdf,
-      meta: "1.3 MB",
-      data: { url: "/pdfs/resume.pdf" },
-    },
-  ],
-  invoices: [
-    {
-      name: "Invoice-1043.pdf",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.pdf,
-      meta: "320 KB",
-      data: { url: "/pdfs/resume.pdf" },
-    },
-    {
-      name: "Invoice-1044.pdf",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.pdf,
-      meta: "310 KB",
-      data: { url: "/pdfs/resume.pdf" },
-    },
-  ],
-  media: [
-    { name: "Photos", type: FileEntryTypes.folder, targetId: "photos" },
-    { name: "Music", type: FileEntryTypes.folder, targetId: "music" },
-  ],
-  photos: [
-    { name: "Vacation", type: FileEntryTypes.folder, targetId: "vacation" },
-    { name: "Headshots", type: FileEntryTypes.folder, targetId: "headshots" },
-    {
-      name: "Wallpaper.png",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.image,
-      meta: "1.8 MB",
-      icon: ImageIcon,
-      data: { url: "/wallpaper.jpg", alt: "Wallpaper" },
-    },
-  ],
-  vacation: [
-    {
-      name: "Beach.png",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.image,
-      meta: "2.1 MB",
-      icon: ImageIcon,
-      data: { url: "/wallpaper.jpg", alt: "Beach" },
-    },
-    {
-      name: "Mountains.png",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.image,
-      meta: "1.4 MB",
-      icon: ImageIcon,
-      data: { url: "/wallpaper.jpg", alt: "Mountains" },
-    },
-  ],
-  headshots: [
-    {
-      name: "Profile.jpg",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.image,
-      meta: "720 KB",
-      icon: ImageIcon,
-      data: { url: "/wallpaper.jpg", alt: "Profile" },
-    },
-  ],
-  music: [
-    {
-      name: "Moavii - Foreign (freetouse.com).mp3",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.audio,
-      meta: "5.1 MB",
-      icon: Music,
-      data: {
-        url: "/music/Moavii - Foreign (freetouse.com).mp3",
-        title: "Foreign",
-        artist: "Moavii",
-      },
-    },
-    {
-      name: "Demo.wav",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.audio,
-      meta: "273 KB",
-      icon: Music,
-      data: {
-        url: "/audio/demo.wav",
-        title: "Demo Track",
-        artist: "Public Library",
-      },
-    },
-  ],
-  downloads: [
-  ],
-  archive: [
-    {
-      name: "old-notes.txt",
-      type: FileEntryTypes.file,
-      fileType: FileTypes.notes,
-      meta: "8 KB",
-      icon: FileText,
-      data: { text: "Archived notes file content." },
-    },
-  ],
-};
-
-const getPath = (id: string) => {
-  const parts: string[] = [];
-  let current: string | undefined = id;
-  while (current) {
-    const meta = folderIndex.get(current);
-    if (!meta) break;
-    parts.unshift(meta.name);
-    current = meta.parent;
-  }
-  return parts.length ? parts.join(" / ") : "Home";
-};
+import {
+  folderContents,
+  folderIndex,
+  folderTree,
+  getFolderPath,
+} from "./filesystemData";
 
 const appRegistry = new Map(desktopApps.map((app) => [app.id, app]));
 const fileAssociations = new Map(
@@ -242,46 +34,24 @@ const FilesComponent = () => {
   });
   const [openError, setOpenError] = useState<string | null>(null);
   const openWindow = useWindowsManagerStore((state) => state.openWindow);
-
   const selectedFolderId = selection.folderId;
-  const selectedItem = selection.item;
 
   const selectedFolder = useMemo(
     () => folderIndex.get(selectedFolderId)?.name ?? "Documents",
     [selectedFolderId]
   );
-
   const items = folderContents[selectedFolderId] ?? [];
-  const path = getPath(selectedFolderId);
 
   const openFolder = (id: string | undefined) => {
-    if (!id) return;
-    if (folderIndex.has(id)) {
-      setSelection({ folderId: id, item: null });
-    }
+    if (!id || !folderIndex.has(id)) return;
+    setSelection({ folderId: id, item: null });
+    setOpenError(null);
   };
-
-  const resolveFolderId = (item: FolderItem) => {
-    if (item.type !== "folder") return undefined;
-    if (item.targetId) return item.targetId;
-    const match = Array.from(folderIndex.entries()).find(
-      ([, meta]) => meta.name === item.name
-    );
-    return match?.[0];
-  };
-
-  const handleItemOpen = (item: FolderItem) =>
-    item.type === "folder" && openFolder(resolveFolderId(item));
 
   const resolveOpenWithOptions = (item: FolderItem): OpenWithOption[] => {
     if (item.type !== "file") return [];
-    const associatedApp = fileAssociations.get(item.fileType);
-    return (associatedApp ? [associatedApp] : [])
-      .map((app) => ({
-        id: app.id,
-        title: app.title,
-        Icon: app.icon,
-      }));
+    const app = fileAssociations.get(item.fileType);
+    return app ? [{ id: app.id, title: app.title, Icon: app.icon }] : [];
   };
 
   const openApp = (appId: string, file: FileEntry) => {
@@ -290,80 +60,51 @@ const FilesComponent = () => {
     const windowId =
       app.id === "music"
         ? app.id
-        : toAppInstanceId(
-            app.id,
-            `${selectedFolderId}-${file.name}`
-          );
+        : toAppInstanceId(app.id, `${selectedFolderId}-${file.name}`);
     openWindow(
       buildAppWindow(app, {
         windowId,
-        fileContext: {
-          name: file.name,
-          type: file.fileType,
-          data: file.data,
-        },
+        fileContext: { name: file.name, type: file.fileType, data: file.data },
       })
     );
     setOpenError(null);
   };
 
-  const openFileWithDefault = (item: FolderItem) => {
-    if (item.type !== "file") return;
-    const defaultTarget = resolveOpenWithOptions(item)[0];
-    if (defaultTarget) {
-      openApp(defaultTarget.id, item);
-      return;
-    }
-    setOpenError(`No installed app can open ${item.name}.`);
-  };
-
   const handleOpen = (item: FolderItem) => {
-    setSelection((prev) => ({ ...prev, item: item.name }));
+    setSelection((current) => ({ ...current, item: item.name }));
     if (item.type === "folder") {
-      handleItemOpen(item);
+      openFolder(item.targetId);
       return;
     }
-    openFileWithDefault(item);
-  };
-
-  const handleOpenWith = (item: FolderItem, appId: string) => {
-    setSelection((prev) => ({ ...prev, item: item.name }));
-    if (item.type !== "file") return;
-    openApp(appId, item);
+    const defaultApp = resolveOpenWithOptions(item)[0];
+    if (defaultApp) openApp(defaultApp.id, item);
+    else setOpenError(`No installed app can open ${item.name}.`);
   };
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col select-none">
-      <Split className="flex-1 min-h-0" initialLeft={260} minLeft={200} minRight={300}>
+      <Split className="min-h-0 flex-1" initialLeft={260} minLeft={200} minRight={300}>
         <Sidebar
           tree={folderTree}
           selectedFolderId={selectedFolderId}
-          onFolderSelect={(folderId) => setSelection({ folderId, item: null })}
+          onFolderSelect={openFolder}
         />
-
         <div className="flex h-full flex-col bg-background">
-          <Header path={path} label={selectedFolder} />
-
+          <Header path={getFolderPath(selectedFolderId)} label={selectedFolder} />
           {openError ? (
             <p role="alert" className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive">
               {openError}
             </p>
           ) : null}
-
           <div className="flex-1 overflow-auto p-4">
             <FilesGrid
               items={items}
-              selectedItem={selectedItem}
-              onSelect={(itemName) =>
-                setSelection((prev) => ({
-                  ...prev,
-                  item: itemName,
-                }))
-              }
-              onOpenFolder={handleItemOpen}
+              selectedItem={selection.item}
+              onSelect={(item) => setSelection((current) => ({ ...current, item }))}
+              onOpenFolder={(item) => item.type === "folder" && openFolder(item.targetId)}
               onOpen={handleOpen}
               resolveOpenWith={resolveOpenWithOptions}
-              onOpenWith={handleOpenWith}
+              onOpenWith={(item, appId) => item.type === "file" && openApp(appId, item)}
             />
           </div>
         </div>

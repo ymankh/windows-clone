@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion } from "framer-motion";
 import useWindowsManagerStore, {
   WindowLayoutModes,
 } from "../../stores/WindowsStore";
@@ -38,6 +38,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
 
   const {
     dockPreview,
+    isDockAnimating,
     isResizing,
     layoutMode,
     startDrag,
@@ -98,20 +99,28 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
           <motion.div
             key={id}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              left: windowData.x,
+              top: windowData.y,
+              width: windowData.width,
+              height: windowData.height,
+            }}
             exit={{ opacity: 0, scale: 0.92, y: 16 }}
             transition={{
               duration: 0.18,
               ease: [0.22, 0.8, 0.36, 1],
+              left: { duration: isDockAnimating ? 0.22 : 0, ease: [0.22, 0.8, 0.36, 1] },
+              top: { duration: isDockAnimating ? 0.22 : 0, ease: [0.22, 0.8, 0.36, 1] },
+              width: { duration: isDockAnimating ? 0.22 : 0, ease: [0.22, 0.8, 0.36, 1] },
+              height: { duration: isDockAnimating ? 0.22 : 0, ease: [0.22, 0.8, 0.36, 1] },
             }}
             className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
             data-window-id={id}
             style={{
               zIndex: windowData.zIndex,
-              left: windowData.x,
-              top: windowData.y,
-              width: windowData.width,
-              height: windowData.height,
             }}
             onMouseDown={() => focusWindow(id)}
           >

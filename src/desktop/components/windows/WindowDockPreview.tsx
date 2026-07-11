@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import useWindowsManagerStore, { WindowLayoutModes } from "@/desktop/stores/WindowsStore";
 import { getDesktopBounds, getLeftDockWidth } from "./windowing/utils";
 import { DockTargets, type DockTarget } from "./windowing/types";
@@ -16,10 +17,13 @@ const WindowDockPreview = ({ windowId, dockPreview }: WindowDockPreviewProps) =>
   const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
   if (dockPreview === DockTargets.top) {
     return createPortal(
-      <div
+      <motion.div
         data-testid="window-dock-preview"
         data-dock-target={dockPreview}
         className="pointer-events-none fixed z-[9998] border border-primary/70 bg-primary/15"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.12 }}
         style={{ left: 0, top: 0, width: viewportWidth, height: desktopHeight }}
       />,
       document.body
@@ -46,10 +50,13 @@ const WindowDockPreview = ({ windowId, dockPreview }: WindowDockPreviewProps) =>
     dockPreview === DockTargets.left ? leftWidth : Math.max(0, viewportWidth - leftWidth);
 
   return createPortal(
-    <div
+    <motion.div
       data-testid="window-dock-preview"
       data-dock-target={dockPreview}
       className="pointer-events-none fixed z-[9998] border border-primary/70 bg-primary/15"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.12 }}
       style={{
         left: dockPreview === DockTargets.left ? 0 : Math.max(0, viewportWidth - previewWidth),
         top: 0,

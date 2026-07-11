@@ -52,4 +52,5 @@ export const dockWindow = async (
   await page.mouse.down();
   await page.mouse.move(targetX, startY, { steps: 16 });
   await page.mouse.up();
+  await page.waitForTimeout(250);
 };

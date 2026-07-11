@@ -7,6 +7,7 @@ import {
   MIN_WINDOW_HEIGHT,
   MIN_WINDOW_WIDTH,
   TASKBAR_HEIGHT,
+  DOCK_ANIMATION_DURATION_MS,
 } from "./constants";
 import {
   DockTargets,
@@ -101,6 +102,8 @@ export const useWindowInteractions = ({
 
   const [dockPreview, setDockPreview] = useState<DockTarget>(null);
   const [isResizing, setIsResizing] = useState(false);
+  const [isDockAnimating, setIsDockAnimating] = useState(false);
+  const dockAnimationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousBoundsRef = useRef<Bounds | null>(null);
   const dragState = useRef<DragState>(createIdleDragState());
   const resizeState = useRef<ResizeState>(createIdleResizeState());
@@ -109,6 +112,12 @@ export const useWindowInteractions = ({
 
   const applyDock = useCallback(
     (target: Exclude<DockTarget, null>) => {
+      if (dockAnimationTimer.current) clearTimeout(dockAnimationTimer.current);
+      setIsDockAnimating(true);
+      dockAnimationTimer.current = setTimeout(
+        () => setIsDockAnimating(false),
+        DOCK_ANIMATION_DURATION_MS
+      );
       const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
 
       if (target === DockTargets.top) {
@@ -414,6 +423,7 @@ export const useWindowInteractions = ({
 
   useEffect(
     () => () => {
+      if (dockAnimationTimer.current) clearTimeout(dockAnimationTimer.current);
       window.removeEventListener("pointermove", handleResizeMove);
       window.removeEventListener("mousemove", handleResizeMove);
       window.removeEventListener("pointerup", handleResizeUp);
@@ -549,6 +559,7 @@ export const useWindowInteractions = ({
 
   return {
     dockPreview,
+    isDockAnimating,
     isResizing,
     layoutMode,
     previousBoundsRef,

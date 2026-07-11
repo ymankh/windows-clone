@@ -36,8 +36,11 @@ test("[window.dock-resize] resizes a real snapped pair with the shared divider",
   await expect.poll(async () => (await notesWindow.boundingBox())?.width ?? 0).toBeGreaterThan(
     (beforeLeft?.width ?? 0) + 60
   );
-  const afterLeft = await notesWindow.boundingBox();
   const afterRight = await browserWindow.boundingBox();
   expect((afterRight?.width ?? 0) - (beforeRight?.width ?? 0)).toBeLessThan(-60);
-  expect(Math.abs((afterLeft?.x ?? 0) + (afterLeft?.width ?? 0) - (afterRight?.x ?? 0))).toBeLessThan(2);
+  await expect.poll(async () => {
+    const left = await notesWindow.boundingBox();
+    const right = await browserWindow.boundingBox();
+    return Math.abs((left?.x ?? 0) + (left?.width ?? 0) - (right?.x ?? 0));
+  }).toBeLessThan(2);
 });

@@ -15,8 +15,10 @@ export const dragWindowBy = async (
   title: string,
   delta: { x: number; y: number }
 ) => {
-  await page.getByRole("button", { name: title, exact: true }).last().click();
   const titlebar = getWindowTitlebar(page, title);
+  if (!(await titlebar.isVisible())) {
+    await page.getByRole("button", { name: title, exact: true }).last().click();
+  }
   await expect(titlebar).toBeVisible();
 
   const box = await titlebar.boundingBox();
@@ -38,8 +40,10 @@ export const dockWindow = async (
   title: string,
   side: "left" | "right"
 ) => {
-  await page.getByRole("button", { name: title, exact: true }).last().click();
   const titlebar = getWindowTitlebar(page, title);
+  if (!(await titlebar.isVisible())) {
+    await page.getByRole("button", { name: title, exact: true }).last().click();
+  }
   await expect(titlebar).toBeVisible();
   const box = await titlebar.boundingBox();
   if (!box) throw new Error(`Missing titlebar bounding box for "${title}"`);

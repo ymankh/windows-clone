@@ -16,9 +16,9 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   const windowData = useWindowsManagerStore((state) =>
     state.windows.find((win) => win.id === id)
   );
-  const removeWindow = useWindowsManagerStore((state) => state.removeWindow);
-  const minimizeWindow = useWindowsManagerStore((state) => state.closeWindow);
-  const focusWindow = useWindowsManagerStore((state) => state.focusWindow);
+  const closeWindow = useWindowsManagerStore((state) => state.closeWindow);
+  const minimizeWindow = useWindowsManagerStore((state) => state.minimizeWindow);
+  const activateWindow = useWindowsManagerStore((state) => state.activateWindow);
   const windows = useWindowsManagerStore((state) => state.windows);
   const [isClosing, setIsClosing] = useState(false);
   const resolvedWindowData = windowData ?? {
@@ -45,17 +45,11 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     layoutMode,
     startDrag,
     startResize,
-    startResizeMouse,
     toggleMaximize,
     resetDragState,
-    handleResizeMove,
-    handleResizeUp,
     handlePointerMove,
     handlePointerUp,
-    handleSplitResizeMove,
-    handleSplitResizeUp,
     startSplitResize,
-    startSplitResizeMouse,
   } = useWindowInteractions({
     id,
     windowData: resolvedWindowData,
@@ -109,36 +103,19 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
           {isResizing ? (
             <div
               className="fixed inset-0 z-[10001] cursor-ew-resize"
-              onPointerMove={(event) => {
-                handleResizeMove(event.nativeEvent);
-                handleSplitResizeMove(event.nativeEvent);
-              }}
-              onMouseMove={(event) => {
-                handleResizeMove(event.nativeEvent);
-                handleSplitResizeMove(event.nativeEvent);
-              }}
-              onPointerUp={() => {
-                handleResizeUp();
-                handleSplitResizeUp();
-              }}
-              onMouseUp={() => {
-                handleResizeUp();
-                handleSplitResizeUp();
-              }}
             />
           ) : null}
           <WindowSplitDivider
             windowData={windowData}
             windows={windows}
             onPointerDown={startSplitResize}
-            onMouseDown={startSplitResizeMouse}
           />
         </>
       ) : null}
       <AnimatePresence
         mode="wait"
         onExitComplete={() => {
-          if (isClosing) removeWindow(id);
+          if (isClosing) closeWindow(id);
         }}
       >
         {!isClosing && !windowData.isMinimized ? (
@@ -165,7 +142,7 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               width: animatedWidth,
               height: animatedHeight,
             }}
-            onMouseDown={() => focusWindow(id)}
+            onPointerDown={() => activateWindow(id)}
           >
             <WindowHeader
               icon={IconComponent}
@@ -195,7 +172,6 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
             <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
             <WindowResizeHandles
               startResize={startResize}
-              startResizeMouse={startResizeMouse}
             />
           </motion.div>
         ) : null}

@@ -54,7 +54,7 @@ type ResizeState = {
   startPosY: number;
 };
 
-type ResizeMoveEvent = PointerEvent | MouseEvent;
+type ResizeMoveEvent = PointerEvent;
 
 const createIdleDragState = (): DragState => ({
   dragging: false,
@@ -84,7 +84,7 @@ export const useWindowInteractions = ({
   id,
   windowData,
 }: UseWindowInteractionsOptions) => {
-  const focusWindow = useWindowsManagerStore((state) => state.focusWindow);
+  const activateWindow = useWindowsManagerStore((state) => state.activateWindow);
   const setWindowLayoutMode = useWindowsManagerStore(
     (state) => state.setWindowLayoutMode
   );
@@ -244,7 +244,7 @@ export const useWindowInteractions = ({
         dockAnimationTimer.current = null;
       }
       setIsDockAnimating(false);
-      focusWindow(id);
+      activateWindow(id);
       setDockPreview(null);
       event.preventDefault();
 
@@ -298,7 +298,7 @@ export const useWindowInteractions = ({
       event.currentTarget.setPointerCapture(event.pointerId);
     },
     [
-      focusWindow,
+      activateWindow,
       id,
       layoutMode,
       minHeight,
@@ -378,7 +378,6 @@ export const useWindowInteractions = ({
     resizeState.current.resizing = false;
     setIsResizing(false);
     window.removeEventListener("pointermove", handleResizeMove);
-    window.removeEventListener("mousemove", handleResizeMove);
   }, [handleResizeMove]);
 
   const handleSplitResizeMove = useCallback(
@@ -396,18 +395,15 @@ export const useWindowInteractions = ({
     splitResizeActive.current = false;
     setIsResizing(false);
     window.removeEventListener("pointermove", handleSplitResizeMove);
-    window.removeEventListener("mousemove", handleSplitResizeMove);
   }, [handleSplitResizeMove]);
 
   const beginSplitResize = useCallback(() => {
-    focusWindow(id);
+    activateWindow(id);
     splitResizeActive.current = true;
     setIsResizing(true);
     window.addEventListener("pointermove", handleSplitResizeMove);
-    window.addEventListener("mousemove", handleSplitResizeMove);
     window.addEventListener("pointerup", handleSplitResizeUp, { once: true });
-    window.addEventListener("mouseup", handleSplitResizeUp, { once: true });
-  }, [focusWindow, handleSplitResizeMove, handleSplitResizeUp, id]);
+  }, [activateWindow, handleSplitResizeMove, handleSplitResizeUp, id]);
 
   const startSplitResize: React.PointerEventHandler<HTMLDivElement> = useCallback(
     (event) => {
@@ -418,26 +414,13 @@ export const useWindowInteractions = ({
     [beginSplitResize]
   );
 
-  const startSplitResizeMouse: React.MouseEventHandler<HTMLDivElement> = useCallback(
-    (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!splitResizeActive.current) beginSplitResize();
-    },
-    [beginSplitResize]
-  );
-
   useEffect(
     () => () => {
       if (dockAnimationTimer.current) clearTimeout(dockAnimationTimer.current);
       window.removeEventListener("pointermove", handleResizeMove);
-      window.removeEventListener("mousemove", handleResizeMove);
       window.removeEventListener("pointerup", handleResizeUp);
-      window.removeEventListener("mouseup", handleResizeUp);
       window.removeEventListener("pointermove", handleSplitResizeMove);
-      window.removeEventListener("mousemove", handleSplitResizeMove);
       window.removeEventListener("pointerup", handleSplitResizeUp);
-      window.removeEventListener("mouseup", handleSplitResizeUp);
     },
     [handleResizeMove, handleResizeUp, handleSplitResizeMove, handleSplitResizeUp]
   );
@@ -453,7 +436,7 @@ export const useWindowInteractions = ({
         return;
       }
 
-      focusWindow(id);
+      activateWindow(id);
       setIsResizing(true);
       resizeState.current = {
         resizing: true,
@@ -467,26 +450,14 @@ export const useWindowInteractions = ({
         startPosY: windowData.y,
       };
       window.addEventListener("pointermove", handleResizeMove);
-      window.addEventListener("mousemove", handleResizeMove);
       window.addEventListener("pointerup", handleResizeUp, { once: true });
-      window.addEventListener("mouseup", handleResizeUp, { once: true });
     },
-    [focusWindow, handleResizeMove, handleResizeUp, id, layoutMode, windowData]
+    [activateWindow, handleResizeMove, handleResizeUp, id, layoutMode, windowData]
   );
 
   const startResize = useCallback(
     (edgeX: ResizeHorizontalEdge, edgeY: ResizeVerticalEdge) =>
       (event: React.PointerEvent<HTMLDivElement>) => {
-        event.stopPropagation();
-        event.preventDefault();
-        beginResize(edgeX, edgeY, event.clientX, event.clientY);
-      },
-    [beginResize]
-  );
-
-  const startResizeMouse = useCallback(
-    (edgeX: ResizeHorizontalEdge, edgeY: ResizeVerticalEdge) =>
-      (event: React.MouseEvent<HTMLDivElement>) => {
         event.stopPropagation();
         event.preventDefault();
         beginResize(edgeX, edgeY, event.clientX, event.clientY);
@@ -581,7 +552,6 @@ export const useWindowInteractions = ({
     previousBoundsRef,
     startDrag,
     startResize,
-    startResizeMouse,
     toggleMaximize,
     resetDragState,
     handleResizeMove,
@@ -591,6 +561,5 @@ export const useWindowInteractions = ({
     handleSplitResizeMove,
     handleSplitResizeUp,
     startSplitResize,
-    startSplitResizeMouse,
   };
 };

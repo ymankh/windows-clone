@@ -81,10 +81,9 @@ interface WindowsManagerStore {
   windows: WindowState[];
   horizontalDockSplit: number;
   openWindow: (window: OpenWindowPayload) => void;
+  minimizeWindow: (id: string) => void;
+  activateWindow: (id: string) => void;
   closeWindow: (id: string) => void;
-  toggleWindow: (id: string) => void;
-  focusWindow: (id: string) => void;
-  removeWindow: (id: string) => void;
   setWindowLayoutMode: (id: string, layoutMode: WindowLayoutMode) => void;
   setHorizontalDockSplit: (split: number) => void;
   updateWindowPosition: (id: string, x: number, y: number) => void;
@@ -157,31 +156,20 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           menubar: win.menubar,
         });
       }),
-    closeWindow: (id) =>
+    minimizeWindow: (id) =>
       set((state) => {
         const window = state.windows.find(({ id: windowId }) => windowId === id);
         if (!window) return;
         window.isMinimized = true;
       }),
-    toggleWindow: (id) =>
-      set((state) => {
-        const window = state.windows.find(({ id: windowId }) => windowId === id);
-        if (!window) return;
-
-        const willMinimize = !window.isMinimized;
-        window.isMinimized = willMinimize;
-        if (!willMinimize) {
-          window.zIndex = getNextZIndex(state.windows);
-        }
-      }),
-    focusWindow: (id) =>
+    activateWindow: (id) =>
       set((state) => {
         const window = state.windows.find(({ id: windowId }) => windowId === id);
         if (!window) return;
         window.isMinimized = false;
         window.zIndex = getNextZIndex(state.windows);
       }),
-    removeWindow: (id) =>
+    closeWindow: (id) =>
       set((state) => {
         state.windows = state.windows.filter(({ id: windowId }) => windowId !== id);
       }),

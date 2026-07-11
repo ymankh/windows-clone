@@ -4,26 +4,21 @@ import useWindowsManagerStore from "../stores/WindowsStore";
 
 const Taskbar = () => {
   const windows = useWindowsManagerStore((state) => state.windows);
-  const toggleWindow = useWindowsManagerStore((state) => state.toggleWindow);
-  const focusWindow = useWindowsManagerStore((state) => state.focusWindow);
+  const activateWindow = useWindowsManagerStore((state) => state.activateWindow);
+  const minimizeWindow = useWindowsManagerStore((state) => state.minimizeWindow);
 
-  const activeWindowId =
-    windows
-      .filter((win) => !win.isMinimized)
-      .reduce<string | null>((topId, win) => {
-        if (!topId) return win.id;
-        const currentTop = windows.find((w) => w.id === topId);
-        if (!currentTop) return win.id;
-        return win.zIndex > currentTop.zIndex ? win.id : topId;
-      }, null) ?? null;
+  const activeWindowId = windows.reduce<string | null>((topId, win) => {
+    if (win.isMinimized) return topId;
+    const currentTop = topId ? windows.find((candidate) => candidate.id === topId) : undefined;
+    return !currentTop || win.zIndex > currentTop.zIndex ? win.id : topId;
+  }, null);
 
   const handleClick = (id: string, isMinimized: boolean) => {
-    if (isMinimized) {
-      toggleWindow(id);
-      focusWindow(id);
+    if (!isMinimized && id === activeWindowId) {
+      minimizeWindow(id);
       return;
     }
-    focusWindow(id);
+    activateWindow(id);
   };
 
   return (

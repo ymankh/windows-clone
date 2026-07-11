@@ -19,6 +19,22 @@ export const testRegistry: TestDefinition[] = [
     details: "Opens Notes and verifies the window position changes after a drag gesture.",
   },
   {
+    id: "window.dock-resize",
+    feature: "Window manager",
+    title: "Resize a snapped window pair",
+    status: "implemented",
+    spec: "tests/playwright/specs/window.dock-resize.spec.ts",
+    details: "Snap two windows and verify their shared divider resizes both sides.",
+  },
+  {
+    id: "window.dock-single-resize",
+    feature: "Window manager",
+    title: "Resize one snapped window",
+    status: "implemented",
+    spec: "tests/playwright/specs/window.dock-single-resize.spec.ts",
+    details: "Snap one window and verify its regular edge remains independently resizable.",
+  },
+  {
     id: "window.minimize",
     feature: "Window manager",
     title: "Minimize windows to the taskbar",

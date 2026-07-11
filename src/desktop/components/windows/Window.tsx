@@ -1,439 +1,68 @@
-import type {
-  ComponentType,
-  MouseEvent,
-  PointerEventHandler,
-  ReactNode,
-  SVGProps,
-} from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Copy, Minus, Square, X } from "lucide-react";
+import type { MouseEvent } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import useWindowsManagerStore from "../../stores/WindowsStore";
+import useWindowsManagerStore, {
+  WindowLayoutModes,
+} from "../../stores/WindowsStore";
+import WindowDockPreview from "./WindowDockPreview";
+import WindowHeader from "./WindowHeader";
 import WindowMenubar from "./WindowMenubar";
-
-type WindowProps = {
-  id: string;
-  title: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-  children: ReactNode;
-};
-
-const DockTargets = {
-  left: "left",
-  right: "right",
-  top: "top",
-} as const;
-
-type DockTarget = ((typeof DockTargets)[keyof typeof DockTargets]) | null;
-
-const WindowLayoutModes = {
-  normal: "normal",
-  maximized: "maximized",
-  dockedLeft: "docked-left",
-  dockedRight: "docked-right",
-} as const;
-
-type WindowLayoutMode =
-  (typeof WindowLayoutModes)[keyof typeof WindowLayoutModes];
-
-const ResizeHorizontalEdges = {
-  left: "left",
-  right: "right",
-} as const;
-
-type ResizeHorizontalEdge =
-  ((typeof ResizeHorizontalEdges)[keyof typeof ResizeHorizontalEdges]) | null;
-
-const ResizeVerticalEdges = {
-  top: "top",
-  bottom: "bottom",
-} as const;
-
-type ResizeVerticalEdge =
-  ((typeof ResizeVerticalEdges)[keyof typeof ResizeVerticalEdges]) | null;
-
-const TASKBAR_HEIGHT = 56;
-const DOCK_EDGE_THRESHOLD = 32;
+import WindowResizeHandles from "./WindowResizeHandles";
+import WindowSplitDivider from "./WindowSplitDivider";
+import { useWindowInteractions } from "./windowing/useWindowInteractions";
+import type { WindowProps } from "./windowing/types";
 
 const Window = ({ id, title, icon, children }: WindowProps) => {
   const windowData = useWindowsManagerStore((state) =>
     state.windows.find((win) => win.id === id)
-  )!;
+  );
   const removeWindow = useWindowsManagerStore((state) => state.removeWindow);
   const minimizeWindow = useWindowsManagerStore((state) => state.closeWindow);
   const focusWindow = useWindowsManagerStore((state) => state.focusWindow);
-  const updateWindowPosition = useWindowsManagerStore(
-    (state) => state.updateWindowPosition
-  );
-  const updateWindowBounds = useWindowsManagerStore(
-    (state) => state.updateWindowBounds
-  );
-  const [layoutMode, setLayoutMode] = useState<WindowLayoutMode>(
-    WindowLayoutModes.normal
-  );
+  const windows = useWindowsManagerStore((state) => state.windows);
   const [isClosing, setIsClosing] = useState(false);
-  const [dockPreview, setDockPreview] = useState<DockTarget>(null);
-  const minWidth = 320;
-  const minHeight = 220;
-  const previousBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(
-    null
-  );
+  const resolvedWindowData = windowData ?? {
+    id,
+    title,
+    isMinimized: false,
+    zIndex: 0,
+    icon,
+    component: children,
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    layoutMode: WindowLayoutModes.normal,
+    menubar: undefined,
+  };
 
-  const windowRef = useRef<HTMLDivElement | null>(null);
-  const dragState = useRef({
-    dragging: false,
-    pointerId: -1,
-    pointerTarget: null as HTMLDivElement | null,
-    startX: 0,
-    startY: 0,
-    originX: 0,
-    originY: 0,
-    maxX: Number.POSITIVE_INFINITY,
-    maxY: Number.POSITIVE_INFINITY,
+  const {
+    dockPreview,
+    isResizing,
+    layoutMode,
+    startDrag,
+    startResize,
+    startResizeMouse,
+    toggleMaximize,
+    resetDragState,
+    handleResizeMove,
+    handleResizeUp,
+    handlePointerMove,
+    handlePointerUp,
+    handleSplitResizeMove,
+    handleSplitResizeUp,
+    startSplitResize,
+    startSplitResizeMouse,
+  } = useWindowInteractions({
+    id,
+    windowData: resolvedWindowData,
   });
-  const resizeState = useRef({
-    resizing: false,
-    edgeX: null as ResizeHorizontalEdge,
-    edgeY: null as ResizeVerticalEdge,
-    startX: 0,
-    startY: 0,
-    startWidth: 0,
-    startHeight: 0,
-    startPosX: 0,
-    startPosY: 0,
-  });
 
-  const handleFocus = () => focusWindow(id);
-  const stop: React.MouseEventHandler = (event: MouseEvent) =>
-    event.stopPropagation();
-
-  const getDesktopBounds = useCallback(() => {
-    const viewportWidth =
-      window.innerWidth || document.documentElement.clientWidth || 0;
-    const viewportHeight =
-      window.innerHeight || document.documentElement.clientHeight || 0;
-    return {
-      width: viewportWidth,
-      height: Math.max(0, viewportHeight - TASKBAR_HEIGHT),
-    };
-  }, []);
-
-  const getDockTarget = useCallback(
-    (pointerX: number, pointerY: number): DockTarget => {
-      const { width } = getDesktopBounds();
-      if (pointerY <= DOCK_EDGE_THRESHOLD) return DockTargets.top;
-      if (pointerX <= DOCK_EDGE_THRESHOLD) return DockTargets.left;
-      if (pointerX >= width - DOCK_EDGE_THRESHOLD) return DockTargets.right;
-      return null;
-    },
-    [getDesktopBounds]
-  );
-
-  const applyDock = useCallback(
-    (target: Exclude<DockTarget, null>) => {
-      if (!windowData) return;
-      const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
-      previousBoundsRef.current = {
-        x: windowData.x,
-        y: windowData.y,
-        width: windowData.width,
-        height: windowData.height,
-      };
-
-      if (target === DockTargets.top) {
-        updateWindowBounds(id, {
-          x: 0,
-          y: 0,
-          width: Math.max(minWidth, viewportWidth),
-          height: Math.max(minHeight, desktopHeight),
-        });
-        setLayoutMode(WindowLayoutModes.maximized);
-        return;
-      }
-
-      const dockedWidth = Math.max(minWidth, Math.floor(viewportWidth / 2));
-      updateWindowBounds(id, {
-        x:
-          target === DockTargets.left
-            ? 0
-            : Math.max(0, viewportWidth - dockedWidth),
-        y: 0,
-        width: dockedWidth,
-        height: Math.max(minHeight, desktopHeight),
-      });
-      setLayoutMode(
-        target === DockTargets.left
-          ? WindowLayoutModes.dockedLeft
-          : WindowLayoutModes.dockedRight
-      );
-    },
-    [getDesktopBounds, id, minHeight, minWidth, updateWindowBounds, windowData]
-  );
-
-  const handlePointerMove = useCallback(
-    (event: PointerEvent) => {
-      if (!dragState.current.dragging) return;
-      event.preventDefault();
-      const deltaX = event.clientX - dragState.current.startX;
-      const deltaY = event.clientY - dragState.current.startY;
-      const nextX = Math.min(
-        Math.max(0, dragState.current.originX + deltaX),
-        dragState.current.maxX
-      );
-      const nextY = Math.min(
-        Math.max(0, dragState.current.originY + deltaY),
-        dragState.current.maxY
-      );
-      updateWindowPosition(id, nextX, nextY);
-      setDockPreview(getDockTarget(event.clientX, event.clientY));
-    },
-    [getDockTarget, id, updateWindowPosition]
-  );
-
-  const resetDragState = useCallback(() => {
-    dragState.current.dragging = false;
-    dragState.current.pointerId = -1;
-    dragState.current.pointerTarget = null;
-    setDockPreview(null);
-  }, []);
-
-  const handlePointerUp = useCallback((event: PointerEvent) => {
-    const dockTarget = getDockTarget(event.clientX, event.clientY);
-    if (dragState.current.dragging && dockTarget) {
-      applyDock(dockTarget);
-    }
-    if (
-      dragState.current.pointerTarget &&
-      dragState.current.pointerId >= 0 &&
-      dragState.current.pointerTarget.hasPointerCapture(dragState.current.pointerId)
-    ) {
-      dragState.current.pointerTarget.releasePointerCapture(dragState.current.pointerId);
-    }
-    resetDragState();
-  }, [applyDock, getDockTarget, resetDragState]);
-
-  const handleDragPointerMove: PointerEventHandler<HTMLDivElement> = (event) => {
-    handlePointerMove(event.nativeEvent);
-  };
-
-  const handleDragPointerUp: PointerEventHandler<HTMLDivElement> = (event) => {
-    handlePointerUp(event.nativeEvent);
-  };
-
-  const handleDragPointerCancel: PointerEventHandler<HTMLDivElement> = () => {
-    resetDragState();
-  };
-
-  const startDrag: React.PointerEventHandler<HTMLDivElement> = (event) => {
-    if (event.button !== 0) return;
-    if (
-      event.target instanceof Element &&
-      event.target.closest("button, [data-no-drag='true']")
-    ) {
-      return;
-    }
-    handleFocus();
-    setDockPreview(null);
-    event.preventDefault();
-    const viewportWidth =
-      window.innerWidth || document.documentElement.clientWidth || 0;
-    const viewportHeight =
-      window.innerHeight || document.documentElement.clientHeight || 0;
-    let baseX = windowData.x;
-    let baseY = windowData.y;
-    let width = windowData.width;
-    let height = windowData.height;
-
-    if (layoutMode !== WindowLayoutModes.normal) {
-      const fallback = {
-        x: Math.max(0, Math.floor((viewportWidth - minWidth) / 2)),
-        y: 64,
-        width: Math.max(minWidth, Math.floor(viewportWidth * 0.7)),
-        height: Math.max(minHeight, Math.floor((viewportHeight - TASKBAR_HEIGHT) * 0.7)),
-      };
-      const restored = previousBoundsRef.current ?? fallback;
-      width = restored.width;
-      height = restored.height;
-      const pointerRatioX =
-        windowData.width > 0 ? (event.clientX - windowData.x) / windowData.width : 0.5;
-      const clampedPointerRatioX = Math.min(Math.max(pointerRatioX, 0.15), 0.85);
-      baseX = Math.round(event.clientX - width * clampedPointerRatioX);
-      baseY = Math.round(event.clientY - Math.min(28, event.clientY - windowData.y));
-      baseX = Math.min(Math.max(0, baseX), Math.max(0, viewportWidth - width));
-      baseY = Math.min(
-        Math.max(0, baseY),
-        Math.max(0, viewportHeight - TASKBAR_HEIGHT - height)
-      );
-      updateWindowBounds(id, { x: baseX, y: baseY, width, height });
-      setLayoutMode(WindowLayoutModes.normal);
-    }
-
-    dragState.current = {
-      dragging: true,
-      pointerId: event.pointerId,
-      pointerTarget: event.currentTarget,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: baseX,
-      originY: baseY,
-      maxX: Math.max(0, viewportWidth - width),
-      maxY: Math.max(0, viewportHeight - TASKBAR_HEIGHT - height),
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  const handleResizeMove = useCallback(
-    (event: PointerEvent) => {
-      if (
-        !resizeState.current.resizing ||
-        layoutMode !== WindowLayoutModes.normal
-      ) {
-        return;
-      }
-      event.preventDefault();
-      const viewportWidth =
-        window.innerWidth || document.documentElement.clientWidth || 0;
-      const viewportHeight =
-        window.innerHeight || document.documentElement.clientHeight || 0;
-
-      const deltaX = event.clientX - resizeState.current.startX;
-      const deltaY = event.clientY - resizeState.current.startY;
-
-      let newX = resizeState.current.startPosX;
-      let newY = resizeState.current.startPosY;
-      let newWidth =
-        resizeState.current.edgeX === ResizeHorizontalEdges.right
-          ? resizeState.current.startWidth + deltaX
-          : resizeState.current.edgeX === ResizeHorizontalEdges.left
-            ? resizeState.current.startWidth - deltaX
-            : resizeState.current.startWidth;
-      let newHeight =
-        resizeState.current.edgeY === ResizeVerticalEdges.bottom
-          ? resizeState.current.startHeight + deltaY
-          : resizeState.current.edgeY === ResizeVerticalEdges.top
-            ? resizeState.current.startHeight - deltaY
-            : resizeState.current.startHeight;
-
-      if (resizeState.current.edgeX === ResizeHorizontalEdges.left) {
-        const maxLeftShift =
-          resizeState.current.startPosX + resizeState.current.startWidth - minWidth;
-        const clampedShift = Math.max(
-          Math.min(deltaX, maxLeftShift),
-          -resizeState.current.startPosX
-        );
-        newX = resizeState.current.startPosX + clampedShift;
-        newWidth =
-          resizeState.current.startWidth +
-          (resizeState.current.startPosX - newX);
-      } else if (resizeState.current.edgeX === ResizeHorizontalEdges.right) {
-        const maxWidth = viewportWidth - resizeState.current.startPosX;
-        newWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
-      }
-
-      if (resizeState.current.edgeY === ResizeVerticalEdges.top) {
-        const maxTopShift =
-          resizeState.current.startPosY + resizeState.current.startHeight - minHeight;
-        const clampedShift = Math.max(
-          Math.min(deltaY, maxTopShift),
-          -resizeState.current.startPosY
-        );
-        newY = resizeState.current.startPosY + clampedShift;
-        newHeight =
-          resizeState.current.startHeight +
-          (resizeState.current.startPosY - newY);
-      } else if (resizeState.current.edgeY === ResizeVerticalEdges.bottom) {
-        const maxHeight =
-          viewportHeight - TASKBAR_HEIGHT - resizeState.current.startPosY;
-        newHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
-      }
-
-      updateWindowBounds(id, {
-        x: Math.round(newX),
-        y: Math.round(newY),
-        width: Math.round(newWidth),
-        height: Math.round(newHeight),
-      });
-    },
-    [id, layoutMode, minHeight, minWidth, updateWindowBounds]
-  );
-
-  const handleResizeUp = useCallback(() => {
-    resizeState.current.resizing = false;
-    window.removeEventListener("pointermove", handleResizeMove);
-  }, [handleResizeMove]);
-
-  useEffect(
-    () => () => {
-      window.removeEventListener("pointermove", handleResizeMove);
-      window.removeEventListener("pointerup", handleResizeUp);
-    },
-    [handleResizeMove, handleResizeUp]
-  );
-
-  const startResize = (
-    edgeX: ResizeHorizontalEdge,
-    edgeY: ResizeVerticalEdge
-  ): React.PointerEventHandler<HTMLDivElement> => (event) => {
-    if (layoutMode !== WindowLayoutModes.normal || !windowData) return;
-    event.stopPropagation();
-    event.preventDefault();
-    handleFocus();
-    resizeState.current = {
-      resizing: true,
-      edgeX,
-      edgeY,
-      startX: event.clientX,
-      startY: event.clientY,
-      startWidth: windowData.width,
-      startHeight: windowData.height,
-      startPosX: windowData.x,
-      startPosY: windowData.y,
-    };
-    window.addEventListener("pointermove", handleResizeMove);
-    window.addEventListener("pointerup", handleResizeUp, { once: true });
-  };
-
-  const applyMaximizeBounds = useCallback(() => {
-    const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
-    const nextWidth = Math.max(minWidth, viewportWidth);
-    const nextHeight = Math.max(minHeight, desktopHeight);
-    updateWindowBounds(id, {
-      x: 0,
-      y: 0,
-      width: nextWidth,
-      height: nextHeight,
-    });
-  }, [getDesktopBounds, id, minHeight, minWidth, updateWindowBounds]);
-
-  const toggleMaximize = useCallback(() => {
-    if (!windowData) return;
-    if (
-      layoutMode === WindowLayoutModes.maximized &&
-      previousBoundsRef.current
-    ) {
-      const { x, y, width, height } = previousBoundsRef.current;
-      updateWindowBounds(id, { x, y, width, height });
-      setLayoutMode(WindowLayoutModes.normal);
-      return;
-    }
-    previousBoundsRef.current = {
-      x: windowData.x,
-      y: windowData.y,
-      width: windowData.width,
-      height: windowData.height,
-    };
-    applyMaximizeBounds();
-    setLayoutMode(WindowLayoutModes.maximized);
-  }, [applyMaximizeBounds, id, layoutMode, updateWindowBounds, windowData]);
-
-  useEffect(() => {
-    if (layoutMode !== WindowLayoutModes.maximized) return;
-    const handleResize = () => applyMaximizeBounds();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [applyMaximizeBounds, layoutMode]);
-
+  const stop: React.MouseEventHandler = (event: MouseEvent) => event.stopPropagation();
   if (!windowData && !isClosing) return null;
+  if (!windowData) return null;
+
+  const IconComponent = windowData.icon ?? icon;
 
   return (
     <AnimatePresence
@@ -442,45 +71,41 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
         if (isClosing) removeWindow(id);
       }}
     >
-      {!isClosing && windowData ? (
+      {!isClosing && !windowData.isMinimized ? (
         <>
-          {dockPreview ? (
+          <WindowDockPreview dockPreview={dockPreview} />
+          {isResizing ? (
             <div
-              className="pointer-events-none fixed z-[9998] border border-primary/70 bg-primary/15"
-              style={(() => {
-                const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
-                if (dockPreview === DockTargets.top) {
-                  return { left: 0, top: 0, width: viewportWidth, height: desktopHeight };
-                }
-                const dockedWidth = Math.max(minWidth, Math.floor(viewportWidth / 2));
-                return {
-                  left:
-                    dockPreview === DockTargets.left
-                      ? 0
-                      : Math.max(0, viewportWidth - dockedWidth),
-                  top: 0,
-                  width: dockedWidth,
-                  height: desktopHeight,
-                };
-              })()}
+              className="fixed inset-0 z-[10001] cursor-ew-resize"
+              onPointerMove={(event) => {
+                handleResizeMove(event.nativeEvent);
+                handleSplitResizeMove(event.nativeEvent);
+              }}
+              onMouseMove={(event) => {
+                handleResizeMove(event.nativeEvent);
+                handleSplitResizeMove(event.nativeEvent);
+              }}
+              onPointerUp={() => {
+                handleResizeUp();
+                handleSplitResizeUp();
+              }}
+              onMouseUp={() => {
+                handleResizeUp();
+                handleSplitResizeUp();
+              }}
             />
           ) : null}
           <motion.div
             key={id}
-            layout
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              y: 0,
-            }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 16 }}
             transition={{
-              layout: { duration: 0.25, ease: [0.22, 0.8, 0.36, 1] },
               duration: 0.18,
               ease: [0.22, 0.8, 0.36, 1],
             }}
             className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
+            data-window-id={id}
             style={{
               zIndex: windowData.zIndex,
               left: windowData.x,
@@ -488,130 +113,45 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               width: windowData.width,
               height: windowData.height,
             }}
-            onMouseDown={handleFocus}
-            ref={windowRef}
+            onMouseDown={() => focusWindow(id)}
           >
-          <div
-            className="flex cursor-move items-center justify-between bg-muted px-3 py-2 text-sm font-semibold select-none"
-            onPointerDown={startDrag}
-            onPointerMove={handleDragPointerMove}
-            onPointerUp={handleDragPointerUp}
-            onPointerCancel={handleDragPointerCancel}
-            onLostPointerCapture={handleDragPointerCancel}
-          >
-            <span className="flex items-center gap-2 truncate">
-              <span className="text-muted-foreground">
-                {(() => {
-                  const IconComponent = windowData.icon ?? icon;
-                  return <IconComponent className="h-4 w-4" />;
-                })()}
-              </span>
-              <span className="truncate">{windowData.title || title}</span>
-            </span>
-            <div className="flex items-center gap-2" data-no-drag="true">
-              <button
-                type="button"
-                data-no-drag="true"
-                className="p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-                onClick={(event) => {
-                  stop(event);
-                  minimizeWindow(id);
-                }}
-                aria-label="Minimize"
-              >
-                <Minus size={14} />
-              </button>
-              <button
-                type="button"
-                data-no-drag="true"
-                className="p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-                onClick={(event) => {
-                  stop(event);
-                  toggleMaximize();
-                }}
-                aria-label={
-                  layoutMode === WindowLayoutModes.maximized
-                    ? "Restore"
-                    : "Maximize"
-                }
-              >
-                {layoutMode === WindowLayoutModes.maximized ? (
-                  <Copy size={14} />
-                ) : (
-                  <Square size={14} />
-                )}
-              </button>
-              <button
-                type="button"
-                data-no-drag="true"
-                className="p-1 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
-                onClick={(event) => {
-                  stop(event);
-                  if (isClosing) return;
-                  setIsClosing(true);
-                }}
-                aria-label="Close"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
+            <WindowHeader
+              icon={IconComponent}
+              title={windowData.title || title}
+              layoutMode={layoutMode}
+              onDragPointerDown={startDrag}
+              onDragPointerMove={(event) => handlePointerMove(event.nativeEvent)}
+              onDragPointerUp={(event) => handlePointerUp(event.nativeEvent)}
+              onDragPointerCancel={resetDragState}
+              onMinimize={(event) => {
+                stop(event);
+                minimizeWindow(id);
+              }}
+              onToggleMaximize={(event) => {
+                stop(event);
+                toggleMaximize();
+              }}
+              onClose={(event) => {
+                stop(event);
+                if (isClosing) return;
+                setIsClosing(true);
+              }}
+            />
 
-          {windowData.menubar ? (
-            <WindowMenubar menu={windowData.menubar} />
-          ) : null}
+            {windowData.menubar ? <WindowMenubar menu={windowData.menubar} /> : null}
 
-          {!windowData.isMinimized && (
             <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
-          )}
-
-          <div className="pointer-events-none absolute inset-0">
-            <div
-              className="pointer-events-auto absolute inset-y-3 left-0 w-2 cursor-ew-resize"
-              onPointerDown={startResize(ResizeHorizontalEdges.left, null)}
+            <WindowResizeHandles
+              startResize={startResize}
+              startResizeMouse={startResizeMouse}
             />
-            <div
-              className="pointer-events-auto absolute inset-y-3 right-0 w-2 cursor-ew-resize"
-              onPointerDown={startResize(ResizeHorizontalEdges.right, null)}
-            />
-            <div
-              className="pointer-events-auto absolute inset-x-3 top-0 h-2 cursor-ns-resize"
-              onPointerDown={startResize(null, ResizeVerticalEdges.top)}
-            />
-            <div
-              className="pointer-events-auto absolute inset-x-3 bottom-0 h-2 cursor-ns-resize"
-              onPointerDown={startResize(null, ResizeVerticalEdges.bottom)}
-            />
-            <div
-              className="pointer-events-auto absolute left-0 top-0 h-3 w-3 cursor-nwse-resize"
-              onPointerDown={startResize(
-                ResizeHorizontalEdges.left,
-                ResizeVerticalEdges.top
-              )}
-            />
-            <div
-              className="pointer-events-auto absolute right-0 top-0 h-3 w-3 cursor-nesw-resize"
-              onPointerDown={startResize(
-                ResizeHorizontalEdges.right,
-                ResizeVerticalEdges.top
-              )}
-            />
-            <div
-              className="pointer-events-auto absolute left-0 bottom-0 h-3 w-3 cursor-nesw-resize"
-              onPointerDown={startResize(
-                ResizeHorizontalEdges.left,
-                ResizeVerticalEdges.bottom
-              )}
-            />
-            <div
-              className="pointer-events-auto absolute right-0 bottom-0 h-3 w-3 cursor-nwse-resize"
-              onPointerDown={startResize(
-                ResizeHorizontalEdges.right,
-                ResizeVerticalEdges.bottom
-              )}
-            />
-          </div>
           </motion.div>
+          <WindowSplitDivider
+            windowData={windowData}
+            windows={windows}
+            onPointerDown={startSplitResize}
+            onMouseDown={startSplitResizeMouse}
+          />
         </>
       ) : null}
     </AnimatePresence>

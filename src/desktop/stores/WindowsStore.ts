@@ -4,6 +4,16 @@ import { immer } from "zustand/middleware/immer";
 
 type WindowIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
+export const WindowLayoutModes = {
+  normal: "normal",
+  maximized: "maximized",
+  dockedLeft: "docked-left",
+  dockedRight: "docked-right",
+} as const;
+
+export type WindowLayoutMode =
+  (typeof WindowLayoutModes)[keyof typeof WindowLayoutModes];
+
 export const WindowMenuItemTypes = {
   item: "item",
   separator: "separator",
@@ -31,7 +41,7 @@ export interface WindowMenu {
   items: WindowMenuItem[];
 }
 
-interface Window {
+export interface WindowState {
   id: string;
   title: string;
   isMinimized: boolean;
@@ -42,6 +52,7 @@ interface Window {
   y: number;
   width: number;
   height: number;
+  layoutMode: WindowLayoutMode;
   menubar?: WindowMenu[];
 }
 
@@ -59,12 +70,15 @@ type OpenWindowPayload = {
 };
 
 interface WindowsManagerStore {
-  windows: Window[];
+  windows: WindowState[];
+  horizontalDockSplit: number;
   openWindow: (window: OpenWindowPayload) => void;
   closeWindow: (id: string) => void;
   toggleWindow: (id: string) => void;
   focusWindow: (id: string) => void;
   removeWindow: (id: string) => void;
+  setWindowLayoutMode: (id: string, layoutMode: WindowLayoutMode) => void;
+  setHorizontalDockSplit: (split: number) => void;
   updateWindowPosition: (id: string, x: number, y: number) => void;
   updateWindowBounds: (
     id: string,
@@ -72,14 +86,24 @@ interface WindowsManagerStore {
   ) => void;
 }
 
-const getNextZIndex = (windows: Window[]) =>
+declare global {
+  interface Window {
+    __windowsManagerStore?: typeof useWindowsManagerStore;
+  }
+}
+
+const getNextZIndex = (windows: WindowState[]) =>
   windows.reduce((max, current) => Math.max(max, current.zIndex), 0) + 1;
+
+const clampHorizontalDockSplit = (split: number) =>
+  Math.min(Math.max(split, 0.2), 0.8);
 
 const useWindowsManagerStore = create<WindowsManagerStore>()(
   immer<WindowsManagerStore>((set) => ({
     windows: [],
+    horizontalDockSplit: 0.5,
     openWindow: (win) =>
-      set((state: WindowsManagerStore) => {
+      set((state) => {
         const existingWindow = state.windows.find(({ id }) => id === win.id);
         const zIndex = win.zIndex ?? getNextZIndex(state.windows);
         const offset = state.windows.length * 20;
@@ -111,22 +135,19 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           y: win.y ?? fallbackY,
           width: fallbackWidth,
           height: fallbackHeight,
+          layoutMode: WindowLayoutModes.normal,
           menubar: win.menubar,
         });
       }),
     closeWindow: (id) =>
-      set((state: WindowsManagerStore) => {
-        const window = state.windows.find(
-          ({ id: windowId }: Window) => windowId === id
-        );
+      set((state) => {
+        const window = state.windows.find(({ id: windowId }) => windowId === id);
         if (!window) return;
         window.isMinimized = true;
       }),
     toggleWindow: (id) =>
-      set((state: WindowsManagerStore) => {
-        const window = state.windows.find(
-          ({ id: windowId }: Window) => windowId === id
-        );
+      set((state) => {
+        const window = state.windows.find(({ id: windowId }) => windowId === id);
         if (!window) return;
 
         const willMinimize = !window.isMinimized;
@@ -136,34 +157,36 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
         }
       }),
     focusWindow: (id) =>
-      set((state: WindowsManagerStore) => {
-        const window = state.windows.find(
-          ({ id: windowId }) => windowId === id
-        );
+      set((state) => {
+        const window = state.windows.find(({ id: windowId }) => windowId === id);
         if (!window) return;
         window.isMinimized = false;
         window.zIndex = getNextZIndex(state.windows);
       }),
     removeWindow: (id) =>
-      set((state: WindowsManagerStore) => {
-        state.windows = state.windows.filter(
-          ({ id: windowId }) => windowId !== id
-        );
+      set((state) => {
+        state.windows = state.windows.filter(({ id: windowId }) => windowId !== id);
+      }),
+    setWindowLayoutMode: (id, layoutMode) =>
+      set((state) => {
+        const window = state.windows.find(({ id: windowId }) => windowId === id);
+        if (!window) return;
+        window.layoutMode = layoutMode;
+      }),
+    setHorizontalDockSplit: (split) =>
+      set((state) => {
+        state.horizontalDockSplit = clampHorizontalDockSplit(split);
       }),
     updateWindowPosition: (id, x, y) =>
-      set((state: WindowsManagerStore) => {
-        const window = state.windows.find(
-          ({ id: windowId }: Window) => windowId === id
-        );
+      set((state) => {
+        const window = state.windows.find(({ id: windowId }) => windowId === id);
         if (!window) return;
         window.x = x;
         window.y = y;
       }),
     updateWindowBounds: (id, bounds) =>
-      set((state: WindowsManagerStore) => {
-        const window = state.windows.find(
-          ({ id: windowId }: Window) => windowId === id
-        );
+      set((state) => {
+        const window = state.windows.find(({ id: windowId }) => windowId === id);
         if (!window) return;
         if (bounds.x !== undefined) window.x = bounds.x;
         if (bounds.y !== undefined) window.y = bounds.y;
@@ -174,3 +197,7 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
 );
 
 export default useWindowsManagerStore;
+
+if (typeof window !== "undefined" && import.meta.env.DEV) {
+  window.__windowsManagerStore = useWindowsManagerStore;
+}

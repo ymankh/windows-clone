@@ -5,7 +5,6 @@ import Window from "./components/windows/Window";
 import Taskbar from "./components/Taskbar";
 import useWindowsManagerStore from "./stores/WindowsStore";
 import DesktopContextMenu from "./components/DesktopContextMenu";
-import { AnimatePresence } from "motion/react";
 import PersonalizationWindow from "./modules/personalization/components/PersonalizationWindow";
 import { Palette } from "lucide-react";
 import useThemeStore from "./modules/personalization/store/ThemeStore";
@@ -166,15 +165,11 @@ const Desktop = ({ apps }: DesktopProps) => {
         </div>
       </DesktopContextMenu>
 
-      <AnimatePresence>
-        {windows.map((win) =>
-          win.isMinimized ? null : (
-            <Window key={win.id} id={win.id} title={win.title} icon={win.icon}>
-              {win.component}
-            </Window>
-          )
-        )}
-      </AnimatePresence>
+      {windows.map((win) => (
+        <Window key={win.id} id={win.id} title={win.title} icon={win.icon}>
+          {win.component}
+        </Window>
+      ))}
 
       <Taskbar />
     </div>

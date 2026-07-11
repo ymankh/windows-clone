@@ -43,6 +43,14 @@ export const testRegistry: TestDefinition[] = [
     details: "Snap one window and verify its regular edge remains independently resizable.",
   },
   {
+    id: "window.animation",
+    feature: "Window manager",
+    title: "Animate docking and minimizing without drag lag",
+    status: "implemented",
+    spec: "tests/playwright/specs/window.animation.spec.ts",
+    details: "Verify minimize exits animate and restored docked windows move immediately.",
+  },
+  {
     id: "window.minimize",
     feature: "Window manager",
     title: "Minimize windows to the taskbar",

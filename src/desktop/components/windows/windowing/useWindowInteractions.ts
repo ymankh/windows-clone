@@ -247,6 +247,11 @@ export const useWindowInteractions = ({
         return;
       }
 
+      if (dockAnimationTimer.current) {
+        clearTimeout(dockAnimationTimer.current);
+        dockAnimationTimer.current = null;
+      }
+      setIsDockAnimating(false);
       focusWindow(id);
       setDockPreview(null);
       event.preventDefault();

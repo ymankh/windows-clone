@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
-import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, animate, motion, useMotionValue } from "framer-motion";
 import useWindowsManagerStore, {
   WindowLayoutModes,
 } from "../../stores/WindowsStore";
@@ -60,18 +60,47 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
   });
 
   const stop: React.MouseEventHandler = (event: MouseEvent) => event.stopPropagation();
+  const animatedLeft = useMotionValue(resolvedWindowData.x);
+  const animatedTop = useMotionValue(resolvedWindowData.y);
+  const animatedWidth = useMotionValue(resolvedWindowData.width);
+  const animatedHeight = useMotionValue(resolvedWindowData.height);
+
+  useEffect(() => {
+    const values = [
+      [animatedLeft, resolvedWindowData.x],
+      [animatedTop, resolvedWindowData.y],
+      [animatedWidth, resolvedWindowData.width],
+      [animatedHeight, resolvedWindowData.height],
+    ] as const;
+
+    if (!isDockAnimating) {
+      values.forEach(([value, target]) => value.set(target));
+      return;
+    }
+
+    const controls = values.map(([value, target]) =>
+      animate(value, target, { duration: 0.22, ease: [0.22, 0.8, 0.36, 1] })
+    );
+    return () => controls.forEach((control) => control.stop());
+  }, [
+    animatedHeight,
+    animatedLeft,
+    animatedTop,
+    animatedWidth,
+    isDockAnimating,
+    resolvedWindowData.height,
+    resolvedWindowData.width,
+    resolvedWindowData.x,
+    resolvedWindowData.y,
+  ]);
+
   if (!windowData && !isClosing) return null;
   if (!windowData) return null;
 
   const IconComponent = windowData.icon ?? icon;
 
   return (
-    <AnimatePresence
-      mode="wait"
-      onExitComplete={() => {
-        if (isClosing) removeWindow(id);
-      }}
-    >
+    <>
       {!isClosing && !windowData.isMinimized ? (
         <>
           <WindowDockPreview windowId={id} dockPreview={dockPreview} />
@@ -96,6 +125,21 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               }}
             />
           ) : null}
+          <WindowSplitDivider
+            windowData={windowData}
+            windows={windows}
+            onPointerDown={startSplitResize}
+            onMouseDown={startSplitResizeMouse}
+          />
+        </>
+      ) : null}
+      <AnimatePresence
+        mode="wait"
+        onExitComplete={() => {
+          if (isClosing) removeWindow(id);
+        }}
+      >
+        {!isClosing && !windowData.isMinimized ? (
           <motion.div
             key={id}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
@@ -103,24 +147,20 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               opacity: 1,
               scale: 1,
               y: 0,
-              left: windowData.x,
-              top: windowData.y,
-              width: windowData.width,
-              height: windowData.height,
             }}
             exit={{ opacity: 0, scale: 0.92, y: 16 }}
             transition={{
               duration: 0.18,
               ease: [0.22, 0.8, 0.36, 1],
-              left: { duration: isDockAnimating ? 0.22 : 0, ease: [0.22, 0.8, 0.36, 1] },
-              top: { duration: isDockAnimating ? 0.22 : 0, ease: [0.22, 0.8, 0.36, 1] },
-              width: { duration: isDockAnimating ? 0.22 : 0, ease: [0.22, 0.8, 0.36, 1] },
-              height: { duration: isDockAnimating ? 0.22 : 0, ease: [0.22, 0.8, 0.36, 1] },
             }}
             className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
             data-window-id={id}
             style={{
               zIndex: windowData.zIndex,
+              left: animatedLeft,
+              top: animatedTop,
+              width: animatedWidth,
+              height: animatedHeight,
             }}
             onMouseDown={() => focusWindow(id)}
           >
@@ -155,15 +195,9 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
               startResizeMouse={startResizeMouse}
             />
           </motion.div>
-          <WindowSplitDivider
-            windowData={windowData}
-            windows={windows}
-            onPointerDown={startSplitResize}
-            onMouseDown={startSplitResizeMouse}
-          />
-        </>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 };
 

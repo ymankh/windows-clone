@@ -10,7 +10,6 @@ type WindowDockPreviewProps = {
 
 const WindowDockPreview = ({ windowId, dockPreview }: WindowDockPreviewProps) => {
   const windows = useWindowsManagerStore((state) => state.windows);
-  const horizontalDockSplit = useWindowsManagerStore((state) => state.horizontalDockSplit);
   if (!dockPreview) return null;
   if (typeof document === "undefined") return null;
 
@@ -31,16 +30,18 @@ const WindowDockPreview = ({ windowId, dockPreview }: WindowDockPreviewProps) =>
     dockPreview === DockTargets.left
       ? WindowLayoutModes.dockedRight
       : WindowLayoutModes.dockedLeft;
-  const hasOppositeWindow = windows.some(
+  const oppositeWindow = windows.find(
     (candidate) =>
       candidate.id !== windowId &&
       !candidate.isMinimized &&
       candidate.layoutMode === oppositeLayout
   );
-  const leftWidth = getLeftDockWidth(
-    viewportWidth,
-    hasOppositeWindow ? horizontalDockSplit : 0.5
-  );
+  const availableSplit = oppositeWindow
+    ? dockPreview === DockTargets.left
+      ? oppositeWindow.x / viewportWidth
+      : (oppositeWindow.x + oppositeWindow.width) / viewportWidth
+    : 0.5;
+  const leftWidth = getLeftDockWidth(viewportWidth, availableSplit);
   const previewWidth =
     dockPreview === DockTargets.left ? leftWidth : Math.max(0, viewportWidth - leftWidth);
 

@@ -132,16 +132,22 @@ export const useWindowInteractions = ({
         target === DockTargets.left
           ? WindowLayoutModes.dockedRight
           : WindowLayoutModes.dockedLeft;
-      const hasOppositeWindow = useWindowsManagerStore
+      const oppositeWindow = useWindowsManagerStore
         .getState()
-        .windows.some(
+        .windows.find(
           (candidate) =>
             candidate.id !== id &&
             !candidate.isMinimized &&
             candidate.layoutMode === oppositeLayout
         );
-      const dockSplit = hasOppositeWindow ? horizontalDockSplit : 0.5;
-      if (!hasOppositeWindow) setHorizontalDockSplit(dockSplit);
+      const dockSplit = oppositeWindow
+        ? clampDockSplitRatio(
+            target === DockTargets.left
+              ? oppositeWindow.x / viewportWidth
+              : (oppositeWindow.x + oppositeWindow.width) / viewportWidth
+          )
+        : 0.5;
+      setHorizontalDockSplit(dockSplit);
 
       previousBoundsRef.current = {
         x: windowData.x,
@@ -167,7 +173,6 @@ export const useWindowInteractions = ({
       );
     },
     [
-      horizontalDockSplit,
       id,
       setHorizontalDockSplit,
       setWindowLayoutMode,

@@ -10,9 +10,18 @@ test("[window.dock-preview] previews the available side of an existing split", a
   await waitForWindow(page, "Notes");
   await dockWindow(page, "Browser", "right");
 
-  await page.evaluate(() => window.__windowsManagerStore?.getState().setHorizontalDockSplit(0.65));
-  await expect.poll(async () => (await getWindowByTitle(page, "Browser").boundingBox())?.x ?? 0)
-    .toBeGreaterThan(700);
+  const browserWindow = getWindowByTitle(page, "Browser");
+  const resizeHandle = browserWindow.getByTestId("window-resize-left");
+  const handleBox = await resizeHandle.boundingBox();
+  expect(handleBox).not.toBeNull();
+  const resizeX = (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2;
+  const resizeY = (handleBox?.y ?? 0) + (handleBox?.height ?? 0) / 2;
+  await page.mouse.move(resizeX, resizeY);
+  await page.mouse.down();
+  await page.mouse.move(resizeX + 190, resizeY, { steps: 16 });
+  await page.mouse.up();
+
+  await expect.poll(async () => (await browserWindow.boundingBox())?.x ?? 0).toBeGreaterThan(700);
 
   await page.getByRole("button", { name: "Notes", exact: true }).last().click();
   const titlebar = getWindowTitlebar(page, "Notes");

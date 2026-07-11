@@ -26,6 +26,7 @@ const WindowResizeHandles = ({
       className="pointer-events-auto absolute inset-y-3 left-0 w-2 cursor-ew-resize"
       onPointerDown={startResize(ResizeHorizontalEdges.left, null)}
       onMouseDown={startResizeMouse(ResizeHorizontalEdges.left, null)}
+      data-testid="window-resize-left"
     />
     <div
       className="pointer-events-auto absolute inset-y-3 right-0 w-2 cursor-ew-resize"

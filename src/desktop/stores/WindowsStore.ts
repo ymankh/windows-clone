@@ -1,6 +1,10 @@
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+import {
+  MIN_WINDOW_HEIGHT,
+  MIN_WINDOW_WIDTH,
+} from "../components/windows/windowing/constants";
 
 type WindowIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -52,6 +56,8 @@ export interface WindowState {
   y: number;
   width: number;
   height: number;
+  minWidth: number;
+  minHeight: number;
   layoutMode: WindowLayoutMode;
   menubar?: WindowMenu[];
 }
@@ -65,6 +71,8 @@ type OpenWindowPayload = {
   y?: number;
   width?: number;
   height?: number;
+  minWidth?: number;
+  minHeight?: number;
   zIndex?: number;
   menubar?: WindowMenu[];
 };
@@ -109,8 +117,10 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
         const offset = state.windows.length * 20;
         const fallbackX = 80 + offset;
         const fallbackY = 80 + offset;
-        const fallbackWidth = win.width ?? 520;
-        const fallbackHeight = win.height ?? 360;
+        const minWidth = Math.max(MIN_WINDOW_WIDTH, win.minWidth ?? MIN_WINDOW_WIDTH);
+        const minHeight = Math.max(MIN_WINDOW_HEIGHT, win.minHeight ?? MIN_WINDOW_HEIGHT);
+        const fallbackWidth = Math.max(minWidth, win.width ?? 520);
+        const fallbackHeight = Math.max(minHeight, win.height ?? 360);
 
         if (existingWindow) {
           existingWindow.title = win.title;
@@ -120,8 +130,14 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           existingWindow.zIndex = zIndex;
           if (win.x !== undefined) existingWindow.x = win.x;
           if (win.y !== undefined) existingWindow.y = win.y;
-          if (win.width !== undefined) existingWindow.width = win.width;
-          if (win.height !== undefined) existingWindow.height = win.height;
+          if (win.minWidth !== undefined) existingWindow.minWidth = minWidth;
+          if (win.minHeight !== undefined) existingWindow.minHeight = minHeight;
+          if (win.width !== undefined) {
+            existingWindow.width = Math.max(existingWindow.minWidth, win.width);
+          }
+          if (win.height !== undefined) {
+            existingWindow.height = Math.max(existingWindow.minHeight, win.height);
+          }
           if (win.menubar !== undefined) existingWindow.menubar = win.menubar;
           return;
         }
@@ -135,6 +151,8 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           y: win.y ?? fallbackY,
           width: fallbackWidth,
           height: fallbackHeight,
+          minWidth,
+          minHeight,
           layoutMode: WindowLayoutModes.normal,
           menubar: win.menubar,
         });
@@ -190,8 +208,12 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
         if (!window) return;
         if (bounds.x !== undefined) window.x = bounds.x;
         if (bounds.y !== undefined) window.y = bounds.y;
-        if (bounds.width !== undefined) window.width = bounds.width;
-        if (bounds.height !== undefined) window.height = bounds.height;
+        if (bounds.width !== undefined) {
+          window.width = Math.max(window.minWidth, bounds.width);
+        }
+        if (bounds.height !== undefined) {
+          window.height = Math.max(window.minHeight, bounds.height);
+        }
       }),
   }))
 );

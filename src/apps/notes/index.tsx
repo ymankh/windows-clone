@@ -107,6 +107,7 @@ export const NotesApp: DesktopApp = {
   title: "Notes",
   icon: FileText,
   Component: NotesComponent,
+  minSize: { width: 360, height: 280 },
   createMenubar: createNotesMenubar,
   fileCapabilities: [{ fileType: FileTypes.notes, schema: notesFileDataSchema }],
 };

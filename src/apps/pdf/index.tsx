@@ -59,6 +59,7 @@ export const PdfApp: DesktopApp = {
   title: "PDF Viewer",
   icon: FileDown,
   Component: PdfComponent,
+  minSize: { width: 480, height: 360 },
   createMenubar: createPdfMenubar,
   fileCapabilities: [{ fileType: FileTypes.pdf, schema: pdfFileDataSchema }],
 };

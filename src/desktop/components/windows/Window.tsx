@@ -32,6 +32,8 @@ const Window = ({ id, title, icon, children }: WindowProps) => {
     y: 0,
     width: 0,
     height: 0,
+    minWidth: 320,
+    minHeight: 220,
     layoutMode: WindowLayoutModes.normal,
     menubar: undefined,
   };

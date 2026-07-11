@@ -47,6 +47,8 @@ export const buildAppWindow = (
       options.component ?? (
         <app.Component windowId={windowId} fileContext={validatedFileContext} />
       ),
+    minWidth: app.minSize?.width,
+    minHeight: app.minSize?.height,
     menubar: options.menubar ?? app.createMenubar?.(windowId) ?? app.menubar,
   };
 };

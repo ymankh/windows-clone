@@ -110,6 +110,8 @@ export const useWindowInteractions = ({
   const resizeState = useRef<ResizeState>(createIdleResizeState());
   const splitResizeActive = useRef(false);
   const layoutMode = windowData.layoutMode;
+  const minWidth = Math.max(MIN_WINDOW_WIDTH, windowData.minWidth);
+  const minHeight = Math.max(MIN_WINDOW_HEIGHT, windowData.minHeight);
 
   const startBoundsAnimation = useCallback(() => {
     if (dockAnimationTimer.current) clearTimeout(dockAnimationTimer.current);
@@ -135,8 +137,8 @@ export const useWindowInteractions = ({
         updateWindowBounds(id, {
           x: 0,
           y: 0,
-          width: Math.max(MIN_WINDOW_WIDTH, viewportWidth),
-          height: Math.max(MIN_WINDOW_HEIGHT, desktopHeight),
+          width: Math.max(minWidth, viewportWidth),
+          height: Math.max(minHeight, desktopHeight),
         });
         setWindowLayoutMode(id, WindowLayoutModes.maximized);
         return;
@@ -151,7 +153,7 @@ export const useWindowInteractions = ({
         width: windowData.width,
         height: windowData.height,
       };
-      const leftWidth = getLeftDockWidth(viewportWidth, dockSplit);
+      const leftWidth = getLeftDockWidth(viewportWidth, dockSplit, minWidth);
       const width =
         target === DockTargets.left ? leftWidth : Math.max(0, viewportWidth - leftWidth);
 
@@ -159,7 +161,7 @@ export const useWindowInteractions = ({
         x: target === DockTargets.left ? 0 : Math.max(0, viewportWidth - width),
         y: 0,
         width,
-        height: Math.max(MIN_WINDOW_HEIGHT, desktopHeight),
+        height: Math.max(minHeight, desktopHeight),
       });
       setWindowLayoutMode(
         id,
@@ -170,6 +172,8 @@ export const useWindowInteractions = ({
     },
     [
       id,
+      minHeight,
+      minWidth,
       setHorizontalDockSplit,
       setWindowLayoutMode,
       startBoundsAnimation,
@@ -255,11 +259,11 @@ export const useWindowInteractions = ({
       // then continues the drag with the pointer anchored near the titlebar position.
       if (layoutMode !== WindowLayoutModes.normal) {
         const fallback = {
-          x: Math.max(0, Math.floor((viewportWidth - MIN_WINDOW_WIDTH) / 2)),
+          x: Math.max(0, Math.floor((viewportWidth - minWidth) / 2)),
           y: 64,
-          width: Math.max(MIN_WINDOW_WIDTH, Math.floor(viewportWidth * 0.7)),
+          width: Math.max(minWidth, Math.floor(viewportWidth * 0.7)),
           height: Math.max(
-            MIN_WINDOW_HEIGHT,
+            minHeight,
             Math.floor((viewportHeight - TASKBAR_HEIGHT) * 0.7)
           ),
         };
@@ -293,7 +297,16 @@ export const useWindowInteractions = ({
       };
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [focusWindow, id, layoutMode, setWindowLayoutMode, updateWindowBounds, windowData]
+    [
+      focusWindow,
+      id,
+      layoutMode,
+      minHeight,
+      minWidth,
+      setWindowLayoutMode,
+      updateWindowBounds,
+      windowData,
+    ]
   );
 
   const handleResizeMove = useCallback(
@@ -325,7 +338,7 @@ export const useWindowInteractions = ({
 
       if (resizeState.current.edgeX === ResizeHorizontalEdges.left) {
         const maxLeftShift =
-          resizeState.current.startPosX + resizeState.current.startWidth - MIN_WINDOW_WIDTH;
+          resizeState.current.startPosX + resizeState.current.startWidth - minWidth;
         const clampedShift = Math.max(
           Math.min(deltaX, maxLeftShift),
           -resizeState.current.startPosX
@@ -334,12 +347,12 @@ export const useWindowInteractions = ({
         newWidth = resizeState.current.startWidth + (resizeState.current.startPosX - newX);
       } else if (resizeState.current.edgeX === ResizeHorizontalEdges.right) {
         const maxWidth = viewportWidth - resizeState.current.startPosX;
-        newWidth = Math.min(Math.max(newWidth, MIN_WINDOW_WIDTH), maxWidth);
+        newWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
       }
 
       if (resizeState.current.edgeY === "top") {
         const maxTopShift =
-          resizeState.current.startPosY + resizeState.current.startHeight - MIN_WINDOW_HEIGHT;
+          resizeState.current.startPosY + resizeState.current.startHeight - minHeight;
         const clampedShift = Math.max(
           Math.min(deltaY, maxTopShift),
           -resizeState.current.startPosY
@@ -348,7 +361,7 @@ export const useWindowInteractions = ({
         newHeight = resizeState.current.startHeight + (resizeState.current.startPosY - newY);
       } else if (resizeState.current.edgeY === "bottom") {
         const maxHeight = viewportHeight - TASKBAR_HEIGHT - resizeState.current.startPosY;
-        newHeight = Math.min(Math.max(newHeight, MIN_WINDOW_HEIGHT), maxHeight);
+        newHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
       }
 
       updateWindowBounds(id, {
@@ -358,7 +371,7 @@ export const useWindowInteractions = ({
         height: Math.round(newHeight),
       });
     },
-    [id, layoutMode, updateWindowBounds]
+    [id, layoutMode, minHeight, minWidth, updateWindowBounds]
   );
 
   const handleResizeUp = useCallback(() => {
@@ -503,13 +516,15 @@ export const useWindowInteractions = ({
     updateWindowBounds(id, {
       x: 0,
       y: 0,
-      width: Math.max(MIN_WINDOW_WIDTH, viewportWidth),
-      height: Math.max(MIN_WINDOW_HEIGHT, desktopHeight),
+      width: Math.max(minWidth, viewportWidth),
+      height: Math.max(minHeight, desktopHeight),
     });
     setWindowLayoutMode(id, WindowLayoutModes.maximized);
   }, [
     id,
     layoutMode,
+    minHeight,
+    minWidth,
     setWindowLayoutMode,
     startBoundsAnimation,
     updateWindowBounds,
@@ -524,14 +539,14 @@ export const useWindowInteractions = ({
       updateWindowBounds(id, {
         x: 0,
         y: 0,
-        width: Math.max(MIN_WINDOW_WIDTH, viewportWidth),
-        height: Math.max(MIN_WINDOW_HEIGHT, desktopHeight),
+        width: Math.max(minWidth, viewportWidth),
+        height: Math.max(minHeight, desktopHeight),
       });
     };
 
     window.addEventListener("resize", handleViewportResize);
     return () => window.removeEventListener("resize", handleViewportResize);
-  }, [id, layoutMode, updateWindowBounds]);
+  }, [id, layoutMode, minHeight, minWidth, updateWindowBounds]);
 
   useEffect(() => {
     if (
@@ -543,20 +558,20 @@ export const useWindowInteractions = ({
 
     const applyDockedBounds = () => {
       const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
-      const leftWidth = getLeftDockWidth(viewportWidth, horizontalDockSplit);
+      const leftWidth = getLeftDockWidth(viewportWidth, horizontalDockSplit, minWidth);
       const isLeft = layoutMode === WindowLayoutModes.dockedLeft;
       updateWindowBounds(id, {
         x: isLeft ? 0 : leftWidth,
         y: 0,
         width: isLeft ? leftWidth : Math.max(0, viewportWidth - leftWidth),
-        height: Math.max(MIN_WINDOW_HEIGHT, desktopHeight),
+        height: Math.max(minHeight, desktopHeight),
       });
     };
 
     applyDockedBounds();
     window.addEventListener("resize", applyDockedBounds);
     return () => window.removeEventListener("resize", applyDockedBounds);
-  }, [horizontalDockSplit, id, layoutMode, updateWindowBounds]);
+  }, [horizontalDockSplit, id, layoutMode, minHeight, minWidth, updateWindowBounds]);
 
   return {
     dockPreview,

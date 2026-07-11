@@ -43,6 +43,14 @@ export const testRegistry: TestDefinition[] = [
     details: "Snap one window and verify its regular edge remains independently resizable.",
   },
   {
+    id: "window.minimum-size",
+    feature: "Window manager",
+    title: "Enforce global and per-app minimum sizes",
+    status: "implemented",
+    spec: "tests/playwright/specs/window.minimum-size.spec.ts",
+    details: "Verify every app rejects zero-sized bounds using its configured minimum.",
+  },
+  {
     id: "window.animation",
     feature: "Window manager",
     title: "Animate docking and minimizing without drag lag",

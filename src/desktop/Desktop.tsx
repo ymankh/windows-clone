@@ -138,10 +138,11 @@ const Desktop = ({ apps }: DesktopProps) => {
             setSelectedIconIds([]);
           }}
         >
-          {apps.map((app) => (
+          {apps.map((app, appIndex) => (
             <DesktopIcon
               key={app.id}
               app={app}
+              appIndex={appIndex}
               sortVersion={sortCounter}
               selected={selectedIconIds.includes(app.id)}
               selectedIds={selectedIconIds}

@@ -25,6 +25,7 @@ import {
 
 type DesktopIconProps = {
   app: DesktopApp;
+  appIndex: number;
   sortVersion?: number;
   selected?: boolean;
   selectedIds?: string[];
@@ -34,6 +35,7 @@ type DesktopIconProps = {
 
 const DesktopIcon = ({
   app,
+  appIndex,
   sortVersion = 0,
   selected = false,
   selectedIds = [],
@@ -44,7 +46,7 @@ const DesktopIcon = ({
   const Icon: ComponentType<SVGProps<SVGSVGElement>> = app.icon;
   const [hidden, setHidden] = useState(false);
   const [position, setPosition] = useState<{ x: number; y: number }>(() =>
-    getInitialIconPosition(app.id)
+    getInitialIconPosition(app.id, appIndex)
   );
   const dragState = useRef({
     dragging: false,
@@ -79,7 +81,7 @@ const DesktopIcon = ({
 
   const applySortedPosition = useEffectEvent(() => {
     if (!sortVersion) return;
-    const resolved = getSortedIconPosition(app.id);
+    const resolved = getSortedIconPosition(app.id, appIndex);
     setPosition(resolved);
     persistPosition(resolved, selectedIdsRef.current);
   });
@@ -108,10 +110,11 @@ const DesktopIcon = ({
       ) {
         return;
       }
-      setPosition({
-        x: Math.max(0, groupDragState.current.originX + detail.deltaX),
-        y: Math.max(0, groupDragState.current.originY + detail.deltaY),
-      });
+      const next = {
+        x: groupDragState.current.originX + detail.deltaX,
+        y: groupDragState.current.originY + detail.deltaY,
+      };
+      setPosition(clampPointToDesktop(next));
     };
 
     const onGroupDragEnd = (event: Event) => {
@@ -122,10 +125,10 @@ const DesktopIcon = ({
       ) {
         return;
       }
-      const released = {
-        x: Math.max(0, groupDragState.current.originX + detail.deltaX),
-        y: Math.max(0, groupDragState.current.originY + detail.deltaY),
-      };
+      const released = clampPointToDesktop({
+        x: groupDragState.current.originX + detail.deltaX,
+        y: groupDragState.current.originY + detail.deltaY,
+      });
       const snapped = persistPosition(released, selectedIdsRef.current);
       setPosition(snapped);
       groupDragState.current.active = false;
@@ -145,6 +148,16 @@ const DesktopIcon = ({
       window.removeEventListener(GROUP_DRAG_END_EVENT, onGroupDragEnd as EventListener);
     };
   }, [app.id, persistPosition]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const next = clampPointToDesktop(positionRef.current);
+      setPosition(next);
+      persistPosition(next, selectedIdsRef.current);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [persistPosition]);
 
   if (hidden) return null;
 
@@ -210,10 +223,10 @@ const DesktopIcon = ({
           event.stopPropagation();
           const deltaX = event.clientX - dragState.current.startX;
           const deltaY = event.clientY - dragState.current.startY;
-          const released = {
-            x: Math.max(0, dragState.current.originX + deltaX),
-            y: Math.max(0, dragState.current.originY + deltaY),
-          };
+          const released = clampPointToDesktop({
+            x: dragState.current.originX + deltaX,
+            y: dragState.current.originY + deltaY,
+          });
           dragState.current.dragging = false;
           const snapped = persistPosition(released, selectedIds);
           setPosition(snapped);

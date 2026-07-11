@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { DEFAULT_THEME_ID, themes } from "../../../themes";
 import { DEFAULT_BACKGROUND_ID, backgrounds } from "../../../backgrounds";
+import { z } from "zod";
 
 export const ThemeModes = {
   light: "light",
@@ -22,6 +23,11 @@ type ThemeStore = {
 const STORAGE_KEY = "desktop-theme";
 const STYLE_ID = "desktop-theme-style";
 const BG_VAR = "--desktop-background-image";
+const themeStateSchema = z.object({
+  themeId: z.string().refine((id) => themes.some((theme) => theme.id === id)),
+  mode: z.enum([ThemeModes.light, ThemeModes.dark]),
+  backgroundUrl: z.string(),
+});
 
 const persistState = (themeId: string, mode: ThemeMode, backgroundUrl: string) => {
   try {
@@ -40,18 +46,14 @@ const loadInitialState = (): { themeId: string; mode: ThemeMode; backgroundUrl: 
     };
   }
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as {
-      themeId?: string;
-      mode?: ThemeMode;
-      backgroundUrl?: string;
-    };
+    const parsed = themeStateSchema.safeParse(
+      JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")
+    );
+    if (!parsed.success) throw new Error("Invalid stored theme");
     return {
-      themeId: parsed.themeId ?? DEFAULT_THEME_ID,
-      mode: parsed.mode ?? ThemeModes.light,
-      backgroundUrl:
-        parsed.backgroundUrl ??
-        backgrounds.find((b) => b.id === DEFAULT_BACKGROUND_ID)?.image ??
-        "",
+      themeId: parsed.data.themeId,
+      mode: parsed.data.mode,
+      backgroundUrl: parsed.data.backgroundUrl,
     };
   } catch {
     return {

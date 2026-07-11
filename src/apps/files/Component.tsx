@@ -2,16 +2,16 @@ import { FileText, Folder as FolderIcon, Image as ImageIcon, Music } from "lucid
 import { type TreeDataItem } from "@/components/tree-view";
 import { FileTypes } from "@/apps/fileTypes";
 import { Split } from "@/components/ui/split";
-import { FilesGrid } from "./componsnts/FilesGrid";
-import { Header } from "./componsnts/Header";
-import { Sidebar } from "./componsnts/Sidebar";
+import { FilesGrid } from "./components/FilesGrid";
+import { Header } from "./components/Header";
+import { Sidebar } from "./components/Sidebar";
 import {
   FileEntryTypes,
   type FileEntry,
   type FolderItem,
   type OpenWithOption,
   type Selection,
-} from "./componsnts/types";
+} from "./components/types";
 import { desktopApps } from "@/apps";
 import { buildAppWindow } from "@/apps/windowBuilder";
 import { toAppInstanceId } from "@/apps/windowing";
@@ -86,7 +86,7 @@ const folderContents: Record<string, FolderItem[]> = {
     {
       name: "Project-Proposal.docx",
       type: FileEntryTypes.file,
-      fileType: FileTypes.notes,
+      fileType: FileTypes.binary,
       meta: "84 KB",
       icon: FileText,
       data: { text: "Project Proposal draft content." },
@@ -94,7 +94,7 @@ const folderContents: Record<string, FolderItem[]> = {
     {
       name: "Budget.xlsx",
       type: FileEntryTypes.file,
-      fileType: FileTypes.notes,
+      fileType: FileTypes.binary,
       meta: "32 KB",
       icon: FileText,
       data: { text: "Budget summary in plain text format." },
@@ -228,16 +228,20 @@ const getPath = (id: string) => {
   return parts.length ? parts.join(" / ") : "Home";
 };
 
+const appRegistry = new Map(desktopApps.map((app) => [app.id, app]));
+const fileAssociations = new Map(
+  desktopApps.flatMap((app) =>
+    (app.fileCapabilities ?? []).map((capability) => [capability.fileType, app] as const)
+  )
+);
+
 const FilesComponent = () => {
   const [selection, setSelection] = useState<Selection>({
     folderId: "documents",
     item: null,
   });
+  const [openError, setOpenError] = useState<string | null>(null);
   const openWindow = useWindowsManagerStore((state) => state.openWindow);
-  const appRegistry = useMemo(
-    () => new Map(desktopApps.map((app) => [app.id, app])),
-    []
-  );
 
   const selectedFolderId = selection.folderId;
   const selectedItem = selection.item;
@@ -271,10 +275,8 @@ const FilesComponent = () => {
 
   const resolveOpenWithOptions = (item: FolderItem): OpenWithOption[] => {
     if (item.type !== "file") return [];
-    return Array.from(appRegistry.values())
-      .filter((app) =>
-        app.fileCapabilities?.some((capability) => capability.fileType === item.fileType)
-      )
+    const associatedApp = fileAssociations.get(item.fileType);
+    return (associatedApp ? [associatedApp] : [])
       .map((app) => ({
         id: app.id,
         title: app.title,
@@ -290,7 +292,7 @@ const FilesComponent = () => {
         ? app.id
         : toAppInstanceId(
             app.id,
-            `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+            `${selectedFolderId}-${file.name}`
           );
     openWindow(
       buildAppWindow(app, {
@@ -302,6 +304,7 @@ const FilesComponent = () => {
         },
       })
     );
+    setOpenError(null);
   };
 
   const openFileWithDefault = (item: FolderItem) => {
@@ -309,7 +312,9 @@ const FilesComponent = () => {
     const defaultTarget = resolveOpenWithOptions(item)[0];
     if (defaultTarget) {
       openApp(defaultTarget.id, item);
+      return;
     }
+    setOpenError(`No installed app can open ${item.name}.`);
   };
 
   const handleOpen = (item: FolderItem) => {
@@ -338,6 +343,12 @@ const FilesComponent = () => {
 
         <div className="flex h-full flex-col bg-background">
           <Header path={path} label={selectedFolder} />
+
+          {openError ? (
+            <p role="alert" className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+              {openError}
+            </p>
+          ) : null}
 
           <div className="flex-1 overflow-auto p-4">
             <FilesGrid

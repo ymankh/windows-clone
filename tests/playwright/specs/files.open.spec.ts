@@ -22,9 +22,8 @@ test("[files.open.pdf] routes PDF file data to the PDF viewer", async ({ page })
   await expect(pdfViewer).toBeVisible();
   const renderedPage = pdfViewer.locator("canvas").first();
   await expect(renderedPage).toBeVisible();
-  const canvasSize = await renderedPage.boundingBox();
-  expect(canvasSize!.width).toBeGreaterThan(100);
-  expect(canvasSize!.height).toBeGreaterThan(100);
+  await expect.poll(() => renderedPage.evaluate((canvas) => canvas.width)).toBeGreaterThan(100);
+  await expect.poll(() => renderedPage.evaluate((canvas) => canvas.height)).toBeGreaterThan(100);
 });
 
 test("[files.open.image] routes image file data to Photos", async ({ page }) => {

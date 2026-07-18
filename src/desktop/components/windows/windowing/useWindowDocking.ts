@@ -60,12 +60,14 @@ export const useWindowDocking = ({
     (target: Exclude<DockTarget, null>) => {
       startBoundsAnimation();
       const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
-      previousBoundsRef.current = {
-        x: windowData.x,
-        y: windowData.y,
-        width: windowData.width,
-        height: windowData.height,
-      };
+      if (windowData.layoutMode === WindowLayoutModes.normal) {
+        previousBoundsRef.current = {
+          x: windowData.x,
+          y: windowData.y,
+          width: windowData.width,
+          height: windowData.height,
+        };
+      }
 
       if (target === DockTargets.top) {
         updateWindowBounds(id, {
@@ -117,12 +119,14 @@ export const useWindowDocking = ({
       return;
     }
 
-    previousBoundsRef.current = {
-      x: windowData.x,
-      y: windowData.y,
-      width: windowData.width,
-      height: windowData.height,
-    };
+    if (layoutMode === WindowLayoutModes.normal) {
+      previousBoundsRef.current = {
+        x: windowData.x,
+        y: windowData.y,
+        width: windowData.width,
+        height: windowData.height,
+      };
+    }
     const { width: viewportWidth, height: desktopHeight } = getDesktopBounds();
     updateWindowBounds(id, {
       x: 0,

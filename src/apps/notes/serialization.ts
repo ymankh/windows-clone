@@ -86,9 +86,11 @@ export const textToSerializedState = (text: string): SerializedEditorState =>
 export const parseNotesFile = (name: string, content: string) => {
   if (!name.toLowerCase().endsWith(".json")) return textToSerializedState(content);
 
-  const parsed = serializedEditorStateSchema.safeParse(JSON.parse(content));
-  if (!parsed.success) {
+  try {
+    const parsed = serializedEditorStateSchema.safeParse(JSON.parse(content));
+    if (!parsed.success) throw new Error();
+    return parsed.data;
+  } catch {
     throw new Error("The selected JSON file is not a valid Notes document.");
   }
-  return parsed.data;
 };

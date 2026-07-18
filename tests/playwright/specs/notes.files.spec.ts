@@ -34,6 +34,7 @@ test("[notes.file.save-markdown] downloads text instead of Lexical JSON", async 
   });
   const download = await downloadPromise;
   const stream = await download.createReadStream();
+  expect(stream).toBeTruthy();
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
 

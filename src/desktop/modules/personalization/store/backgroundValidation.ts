@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const backgroundUrlSchema = z.string().trim().refine((value) => {
-  if (value.startsWith("/") || value.startsWith("data:image/") || value.startsWith("blob:")) {
+  if (value.startsWith("/") || value.startsWith("data:image/")) {
     return true;
   }
   try {

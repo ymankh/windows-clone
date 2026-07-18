@@ -172,26 +172,36 @@ const Window = ({ id }: WindowProps) => {
               const direction = directions[event.key];
               if (!direction) return;
               event.preventDefault();
+              const desktop = getDesktopBounds();
 
               if (event.ctrlKey) {
-                const desktop = getDesktopBounds();
+                const maxWidth = Math.max(0, desktop.width - windowData.x);
+                const maxHeight = Math.max(0, desktop.height - windowData.y);
+                const minWidth = Math.min(windowData.minWidth, maxWidth);
+                const minHeight = Math.min(windowData.minHeight, maxHeight);
                 useWindowsManagerStore.getState().updateWindowBounds(id, {
                   width: Math.min(
-                    Math.max(0, desktop.width - windowData.x),
-                    windowData.width + direction[0]
+                    maxWidth,
+                    Math.max(minWidth, windowData.width + direction[0])
                   ),
                   height: Math.min(
-                    Math.max(0, desktop.height - windowData.y),
-                    windowData.height + direction[1]
+                    maxHeight,
+                    Math.max(minHeight, windowData.height + direction[1])
                   ),
                 });
                 return;
               }
 
-              useWindowsManagerStore.getState().updateWindowPosition(
+              const maxX = Math.max(0, desktop.width - windowData.width);
+              const maxY = Math.max(0, desktop.height - windowData.height);
+              const store = useWindowsManagerStore.getState();
+              if (layoutMode !== WindowLayoutModes.normal) {
+                store.setWindowLayoutMode(id, WindowLayoutModes.normal);
+              }
+              store.updateWindowPosition(
                 id,
-                Math.max(0, windowData.x + direction[0]),
-                Math.max(0, windowData.y + direction[1])
+                Math.min(maxX, Math.max(0, windowData.x + direction[0])),
+                Math.min(maxY, Math.max(0, windowData.y + direction[1]))
               );
             }}
           >

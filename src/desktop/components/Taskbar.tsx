@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { getAppById } from "@/apps";
 import clsx from "clsx";
 import useWindowsManagerStore from "../stores/WindowsStore";
 
@@ -30,7 +30,9 @@ const Taskbar = () => {
           null
         ) : (
           windows.map((win) => {
-            const Icon = win.icon as (props: SVGProps<SVGSVGElement>) => React.ReactElement;
+            const app = getAppById(win.appId);
+            if (!app) return null;
+            const Icon = app.icon;
 
             return (
               <button

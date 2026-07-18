@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { z } from "zod";
+import { backgroundUrlSchema } from "./backgroundValidation";
 
 type CustomBackground = { id: string; name: string; url: string };
 
@@ -13,17 +14,6 @@ type PersonalizationStore = {
 };
 
 const STORAGE_KEY = "desktop-custom-backgrounds";
-const backgroundUrlSchema = z.string().trim().refine((value) => {
-  if (value.startsWith("/") || value.startsWith("data:image/") || value.startsWith("blob:")) {
-    return true;
-  }
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}, "Enter a valid image URL");
 const customBackgroundSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),

@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
-import { Suspense, useEffect, useId, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
+import { getAppById } from "@/apps";
 import useWindowsManagerStore, {
   WindowLayoutModes,
 } from "../../stores/WindowsStore";
@@ -11,8 +12,9 @@ import WindowResizeHandles from "./WindowResizeHandles";
 import WindowSplitDivider from "./WindowSplitDivider";
 import { useWindowInteractions } from "./windowing/useWindowInteractions";
 import type { WindowProps } from "./windowing/types";
+import { getDesktopBounds } from "./windowing/utils";
 
-const Window = ({ id, title, icon }: WindowProps) => {
+const Window = ({ id }: WindowProps) => {
   const windowData = useWindowsManagerStore((state) =>
     state.windows.find((win) => win.id === id)
   );
@@ -27,12 +29,11 @@ const Window = ({ id, title, icon }: WindowProps) => {
   const reduceMotion = useReducedMotion();
   const resolvedWindowData = windowData ?? {
     id,
-    title,
+    title: "",
+    appId: "",
+    fileContext: undefined,
     isMinimized: false,
     zIndex: 0,
-    icon,
-    contentComponent: () => null,
-    contentProps: {},
     x: 0,
     y: 0,
     width: 0,
@@ -40,8 +41,12 @@ const Window = ({ id, title, icon }: WindowProps) => {
     minWidth: 320,
     minHeight: 220,
     layoutMode: WindowLayoutModes.normal,
-    menubar: undefined,
   };
+  const app = getAppById(resolvedWindowData.appId);
+  const menubar = useMemo(
+    () => app?.createMenubar?.(id) ?? app?.menubar,
+    [app, id]
+  );
 
   const {
     dockPreview,
@@ -97,11 +102,9 @@ const Window = ({ id, title, icon }: WindowProps) => {
     if (!windowData?.isMinimized) windowRef.current?.focus();
   }, [windowData?.isMinimized]);
 
-  if (!windowData && !isClosing) return null;
-  if (!windowData) return null;
-
-  const IconComponent = windowData.icon ?? icon;
-  const ContentComponent = windowData.contentComponent;
+  if (!windowData || !app) return null;
+  const IconComponent = app.icon;
+  const ContentComponent = app.Component;
 
   return (
     <>
@@ -169,6 +172,22 @@ const Window = ({ id, title, icon }: WindowProps) => {
               const direction = directions[event.key];
               if (!direction) return;
               event.preventDefault();
+
+              if (event.ctrlKey) {
+                const desktop = getDesktopBounds();
+                useWindowsManagerStore.getState().updateWindowBounds(id, {
+                  width: Math.min(
+                    Math.max(0, desktop.width - windowData.x),
+                    windowData.width + direction[0]
+                  ),
+                  height: Math.min(
+                    Math.max(0, desktop.height - windowData.y),
+                    windowData.height + direction[1]
+                  ),
+                });
+                return;
+              }
+
               useWindowsManagerStore.getState().updateWindowPosition(
                 id,
                 Math.max(0, windowData.x + direction[0]),
@@ -177,11 +196,11 @@ const Window = ({ id, title, icon }: WindowProps) => {
             }}
           >
             <p id={instructionsId} className="sr-only">
-              Hold Alt and use the arrow keys to move this window. Hold Shift for larger steps.
+              Hold Alt and use the arrow keys to move this window. Hold Control and Alt to resize it. Hold Shift for larger steps.
             </p>
             <WindowHeader
               icon={IconComponent}
-              title={windowData.title || title}
+              title={windowData.title}
               titleId={titleId}
               layoutMode={layoutMode}
               onDragPointerDown={startDrag}
@@ -200,7 +219,7 @@ const Window = ({ id, title, icon }: WindowProps) => {
               }}
             />
 
-            {windowData.menubar ? <WindowMenubar menu={windowData.menubar} /> : null}
+            {menubar ? <WindowMenubar menu={menubar} /> : null}
 
             <div className="flex-1 min-h-0 overflow-hidden">
               <Suspense
@@ -210,7 +229,7 @@ const Window = ({ id, title, icon }: WindowProps) => {
                   </div>
                 }
               >
-                <ContentComponent {...windowData.contentProps} />
+                <ContentComponent windowId={id} fileContext={windowData.fileContext} />
               </Suspense>
             </div>
             <WindowResizeHandles

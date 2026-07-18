@@ -1,4 +1,3 @@
-import type { ComponentType, SVGProps } from "react";
 import type { AppWindowComponentProps } from "@/apps/types";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
@@ -7,7 +6,6 @@ import {
   MIN_WINDOW_WIDTH,
 } from "../components/windows/windowing/constants";
 
-type WindowIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 export const WindowLayoutModes = {
   normal: "normal",
@@ -51,9 +49,8 @@ export interface WindowState {
   title: string;
   isMinimized: boolean;
   zIndex: number;
-  icon: WindowIcon;
-  contentComponent: ComponentType<AppWindowComponentProps>;
-  contentProps: AppWindowComponentProps;
+  appId: string;
+  fileContext?: AppWindowComponentProps["fileContext"];
   x: number;
   y: number;
   width: number;
@@ -61,15 +58,13 @@ export interface WindowState {
   minWidth: number;
   minHeight: number;
   layoutMode: WindowLayoutMode;
-  menubar?: WindowMenu[];
 }
 
 type OpenWindowPayload = {
   id: string;
   title: string;
-  icon: WindowIcon;
-  contentComponent: ComponentType<AppWindowComponentProps>;
-  contentProps?: AppWindowComponentProps;
+  appId: string;
+  fileContext?: AppWindowComponentProps["fileContext"];
   x?: number;
   y?: number;
   width?: number;
@@ -77,7 +72,6 @@ type OpenWindowPayload = {
   minWidth?: number;
   minHeight?: number;
   zIndex?: number;
-  menubar?: WindowMenu[];
 };
 
 interface WindowsManagerStore {
@@ -126,9 +120,8 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
 
         if (existingWindow) {
           existingWindow.title = win.title;
-          existingWindow.icon = win.icon;
-          existingWindow.contentComponent = win.contentComponent;
-          existingWindow.contentProps = win.contentProps ?? {};
+          existingWindow.appId = win.appId;
+          existingWindow.fileContext = win.fileContext;
           existingWindow.isMinimized = false;
           existingWindow.zIndex = zIndex;
           if (win.x !== undefined) existingWindow.x = win.x;
@@ -141,7 +134,6 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           if (win.height !== undefined) {
             existingWindow.height = Math.max(existingWindow.minHeight, win.height);
           }
-          if (win.menubar !== undefined) existingWindow.menubar = win.menubar;
           return;
         }
 
@@ -149,8 +141,8 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           ...win,
           isMinimized: false,
           zIndex,
-          icon: win.icon,
-          contentProps: win.contentProps ?? {},
+          appId: win.appId,
+          fileContext: win.fileContext,
           x: win.x ?? fallbackX,
           y: win.y ?? fallbackY,
           width: fallbackWidth,
@@ -158,7 +150,6 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           minWidth,
           minHeight,
           layoutMode: WindowLayoutModes.normal,
-          menubar: win.menubar,
         });
       }),
     minimizeWindow: (id) =>

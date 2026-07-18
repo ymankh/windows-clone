@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { DesktopApp } from "../apps";
+import { PersonalizationApp, type DesktopApp } from "../apps";
+import { buildAppWindow } from "../apps/windowBuilder";
 import DesktopIcon from "./components/DesktopIcon";
 import Window from "./components/windows/Window";
 import Taskbar from "./components/Taskbar";
 import useWindowsManagerStore from "./stores/WindowsStore";
 import DesktopContextMenu from "./components/DesktopContextMenu";
-import PersonalizationWindow from "./modules/personalization/components/PersonalizationWindow";
-import { Palette } from "lucide-react";
 import useThemeStore from "./modules/personalization/store/ThemeStore";
 import {
   collectIntersectedIconIds,
@@ -44,15 +43,12 @@ const Desktop = ({ apps }: DesktopProps) => {
   }, [applyTheme]);
 
   const openPersonalization = () =>
-    openWindow({
-      id: "personalization",
-      title: "Personalization",
-      icon: Palette,
-      contentComponent: PersonalizationWindow,
-      contentProps: {},
-      width: 860,
-      height: 560,
-    });
+    openWindow(
+      buildAppWindow(PersonalizationApp, {
+        windowId: "personalization",
+        title: "Personalization",
+      })
+    );
 
   return (
     <div
@@ -168,7 +164,7 @@ const Desktop = ({ apps }: DesktopProps) => {
       </DesktopContextMenu>
 
       {windows.map((win) => (
-        <Window key={win.id} id={win.id} title={win.title} icon={win.icon} />
+        <Window key={win.id} id={win.id} />
       ))}
 
       <Taskbar />

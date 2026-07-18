@@ -13,17 +13,16 @@ import {
   serializedStateToMarkdown,
   textToSerializedState,
 } from "./serialization";
+import { loadPersistedNote, persistNote } from "./persistence";
 
-const STORAGE_PREFIX = "notes-app-content";
 
 const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentProps) => {
-  const storageKey = `${STORAGE_PREFIX}:${windowId}`;
   const initialSerializedState = useMemo(() => {
     if (fileContext?.type === FileTypes.notes) {
       const parsed = notesFileDataSchema.safeParse(fileContext.data);
       if (parsed.success) {
-        if (parsed.data.serialized && typeof parsed.data.serialized === "object") {
-          return parsed.data.serialized as SerializedEditorState;
+        if (parsed.data.serialized) {
+          return parsed.data.serialized;
         }
         if (typeof parsed.data.text === "string") {
           return textToSerializedState(parsed.data.text);
@@ -31,14 +30,8 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
       }
     }
 
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) return undefined;
-    try {
-      return JSON.parse(saved) as SerializedEditorState;
-    } catch {
-      return undefined;
-    }
-  }, [fileContext, storageKey]);
+    return loadPersistedNote(windowId);
+  }, [fileContext, windowId]);
 
   const [serialized, setSerialized] = useState<SerializedEditorState | undefined>(
     initialSerializedState
@@ -48,10 +41,9 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
 
   const handleSerializedChange = (next: SerializedEditorState) => {
     setSerialized(next);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(next));
+    if (persistNote(windowId, next)) {
       setFileError(null);
-    } catch {
+    } else {
       setFileError("This note could not be saved in browser storage.");
     }
   };

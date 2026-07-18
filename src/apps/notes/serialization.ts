@@ -1,5 +1,6 @@
 import type { SerializedEditorState } from "lexical";
 import { LexicalNodeTypes, LexicalTextModes } from "./constants";
+import { serializedEditorStateSchema } from "./schema";
 
 type SerializedNode = {
   type?: string;
@@ -85,9 +86,9 @@ export const textToSerializedState = (text: string): SerializedEditorState =>
 export const parseNotesFile = (name: string, content: string) => {
   if (!name.toLowerCase().endsWith(".json")) return textToSerializedState(content);
 
-  const parsed: unknown = JSON.parse(content);
-  if (!parsed || typeof parsed !== "object" || !("root" in parsed)) {
+  const parsed = serializedEditorStateSchema.safeParse(JSON.parse(content));
+  if (!parsed.success) {
     throw new Error("The selected JSON file is not a valid Notes document.");
   }
-  return parsed as SerializedEditorState;
+  return parsed.data;
 };

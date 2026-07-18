@@ -57,31 +57,40 @@ export const resolveFreeGridCell = (
   candidate: IconPoint,
   positions: IconPositionsMap,
   currentAppId: string,
-  excludedIds: string[] = []
+  excludedIds: string[] = [],
+  bounds = getIconDesktopBounds()
 ): IconPoint => {
-  const bounds = getIconDesktopBounds();
   const excluded = new Set(excludedIds);
   const occupied = new Set(
     Object.entries(positions)
       .filter(([id]) => id !== currentAppId && !excluded.has(id))
       .map(([, point]) => {
-        const snapped = snapToGrid(point);
+        const snapped = snapToGrid(clampPointToDesktop(point, bounds));
         return `${snapped.x},${snapped.y}`;
       })
   );
+  const maxColumn = Math.floor(bounds.width / GRID_COL_WIDTH) * GRID_COL_WIDTH;
+  const maxRow = Math.floor(bounds.height / GRID_ROW_HEIGHT) * GRID_ROW_HEIGHT;
+  const columns = Math.floor(maxColumn / GRID_COL_WIDTH) + 1;
+  const rows = Math.floor(maxRow / GRID_ROW_HEIGHT) + 1;
+  let resolved = snapToGrid(clampPointToDesktop(candidate, bounds));
+  resolved = {
+    x: Math.min(maxColumn, resolved.x),
+    y: Math.min(maxRow, resolved.y),
+  };
 
-  let resolved = clampPointToDesktop(snapToGrid(candidate), bounds);
-  const maxRows = Math.max(1, Math.floor(bounds.height / GRID_ROW_HEIGHT) + 1);
-  let attempts = 0;
-  while (occupied.has(`${resolved.x},${resolved.y}`)) {
-    attempts += 1;
-    if (attempts > Object.keys(positions).length + maxRows) break;
+  for (let attempts = 0; attempts < columns * rows; attempts += 1) {
+    if (!occupied.has(`${resolved.x},${resolved.y}`)) return resolved;
     const nextY = resolved.y + GRID_ROW_HEIGHT;
-    resolved = {
-      x: nextY <= bounds.height ? resolved.x : resolved.x + GRID_COL_WIDTH,
-      y: nextY <= bounds.height ? nextY : 0,
-    };
-    resolved = clampPointToDesktop(resolved, bounds);
+    resolved =
+      nextY <= maxRow
+        ? { x: resolved.x, y: nextY }
+        : {
+            x: resolved.x + GRID_COL_WIDTH <= maxColumn
+              ? resolved.x + GRID_COL_WIDTH
+              : 0,
+            y: 0,
+          };
   }
 
   return resolved;
@@ -93,24 +102,31 @@ export const getInitialIconPosition = (appId: string, appIndex: number): IconPoi
     return resolveFreeGridCell(positions[appId], positions, appId);
   }
 
+  const bounds = getIconDesktopBounds();
+  const rowsPerColumn = Math.floor(bounds.height / GRID_ROW_HEIGHT) + 1;
   return resolveFreeGridCell(
     {
-      x: Math.floor(appIndex / 5) * GRID_COL_WIDTH,
-      y: (appIndex % 5) * GRID_ROW_HEIGHT,
+      x: Math.floor(appIndex / rowsPerColumn) * GRID_COL_WIDTH,
+      y: (appIndex % rowsPerColumn) * GRID_ROW_HEIGHT,
     },
     positions,
-    appId
+    appId,
+    [],
+    bounds
   );
 };
 
 export const getSortedIconPosition = (
   appId: string,
   appIndex: number,
-  rowsPerCol = 5
+  rowsPerColumn?: number
 ): IconPoint => {
   const positions = readStoredIconPositions();
-  const col = Math.floor(appIndex / rowsPerCol);
-  const row = appIndex % rowsPerCol;
+  const bounds = getIconDesktopBounds();
+  const rowCount =
+    rowsPerColumn ?? Math.floor(bounds.height / GRID_ROW_HEIGHT) + 1;
+  const col = Math.floor(appIndex / rowCount);
+  const row = appIndex % rowCount;
 
   return resolveFreeGridCell(
     {
@@ -118,7 +134,9 @@ export const getSortedIconPosition = (
       y: row * GRID_ROW_HEIGHT,
     },
     positions,
-    appId
+    appId,
+    [],
+    bounds
   );
 };
 

@@ -1,12 +1,9 @@
-import { createElement } from "react";
-import type { AppWindowComponentProps, DesktopApp } from "./types";
-import type { WindowMenu } from "@/desktop/stores/WindowsStore";
+import type { DesktopApp } from "./types";
 import type { FileType } from "./fileTypes";
 
 export type BuildAppWindowOptions = {
   windowId?: string;
   title?: string;
-  menubar?: WindowMenu[];
   fileContext?: {
     name: string;
     type: FileType;
@@ -41,12 +38,9 @@ export const buildAppWindow = (
   return {
     id: windowId,
     title: options.title ?? app.title,
-    icon: app.icon,
-    contentComponent: (props: AppWindowComponentProps) =>
-      createElement(app.Component, props),
-    contentProps: { windowId, fileContext: validatedFileContext },
+    appId: app.id,
+    fileContext: validatedFileContext,
     minWidth: app.minSize?.width,
     minHeight: app.minSize?.height,
-    menubar: options.menubar ?? app.createMenubar?.(windowId) ?? app.menubar,
   };
 };

@@ -40,3 +40,26 @@ test("[notes.file.save-markdown] downloads text instead of Lexical JSON", async 
   expect(Buffer.concat(chunks).toString("utf8")).toBe("Download me");
   expect(download.suggestedFilename()).toBe("note.md");
 });
+
+test("[notes.persistence.malformed] recovers from malformed saved editor state", async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "notes-app-content:notes",
+      JSON.stringify({ root: { type: "not-root", children: [] } })
+    );
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openDesktopApp(page, "Notes");
+  await waitForWindow(page, "Notes");
+
+  const editor = getWindowByTitle(page, "Notes").locator('[contenteditable="true"]');
+  await editor.click();
+  await page.keyboard.type("Recovered note");
+
+  await expect(editor).toContainText("Recovered note");
+  expect(pageErrors).toEqual([]);
+});

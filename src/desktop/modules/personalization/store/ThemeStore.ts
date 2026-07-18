@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { DEFAULT_THEME_ID, themes } from "../../../themes";
 import { DEFAULT_BACKGROUND_ID, backgrounds } from "../../../backgrounds";
 import { z } from "zod";
+import { backgroundUrlSchema } from "./backgroundValidation";
 
 export const ThemeModes = {
   light: "light",
@@ -26,7 +27,7 @@ const BG_VAR = "--desktop-background-image";
 const themeStateSchema = z.object({
   themeId: z.string().refine((id) => themes.some((theme) => theme.id === id)),
   mode: z.enum([ThemeModes.light, ThemeModes.dark]),
-  backgroundUrl: z.string(),
+  backgroundUrl: backgroundUrlSchema,
 });
 
 const persistState = (themeId: string, mode: ThemeMode, backgroundUrl: string) => {

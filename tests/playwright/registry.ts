@@ -138,7 +138,8 @@ export const testRegistry: TestDefinition[] = [
     id: "desktop.icon.drag.group",
     feature: "Desktop",
     title: "Drag multiple selected desktop icons together",
-    status: "planned",
+    status: "implemented",
+    spec: "tests/playwright/specs/desktop.behavior.spec.ts",
     details: "Verify group drag keeps relative offsets for selected icons.",
   },
   {

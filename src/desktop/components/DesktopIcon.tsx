@@ -7,9 +7,11 @@ import DesktopIconMenu from "./DesktopIconMenu";
 import { cn } from "@/lib/utils";
 import {
   clampPointToDesktop,
+  getIconDesktopBounds,
   getInitialIconPosition,
   getSortedIconPosition,
-  persistIconPosition,
+  persistIconPositions,
+  type IconPositionsMap,
 } from "../helpers/iconPositioning";
 import {
   emitGroupDragEnd,
@@ -19,9 +21,63 @@ import {
   GROUP_DRAG_END_EVENT,
   GROUP_DRAG_MOVE_EVENT,
   GROUP_DRAG_START_EVENT,
+  type GroupDragBounds,
+  type GroupDragEndDetail,
   type GroupDragMoveDetail,
   type GroupDragStartDetail,
 } from "../helpers/groupDragEvents";
+
+const getGroupDragSnapshot = (
+  selectedIds: string[]
+): Pick<GroupDragStartDetail, "origins" | "bounds"> => {
+  const selected = new Set(selectedIds);
+  const origins: IconPositionsMap = {};
+  const bounds: GroupDragBounds = {
+    minX: Number.POSITIVE_INFINITY,
+    minY: Number.POSITIVE_INFINITY,
+    maxX: Number.NEGATIVE_INFINITY,
+    maxY: Number.NEGATIVE_INFINITY,
+  };
+
+  document.querySelectorAll<HTMLElement>("[data-desktop-icon-id]").forEach((icon) => {
+    const id = icon.dataset.desktopIconId;
+    if (!id || !selected.has(id)) return;
+    const x = Number.parseFloat(icon.style.left);
+    const y = Number.parseFloat(icon.style.top);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+    origins[id] = { x, y };
+    bounds.minX = Math.min(bounds.minX, x);
+    bounds.minY = Math.min(bounds.minY, y);
+    bounds.maxX = Math.max(bounds.maxX, x);
+    bounds.maxY = Math.max(bounds.maxY, y);
+  });
+
+  return { origins, bounds };
+};
+
+const clampGroupDelta = (
+  bounds: GroupDragBounds,
+  deltaX: number,
+  deltaY: number
+) => {
+  const desktopBounds = getIconDesktopBounds();
+  return {
+    x: Math.min(desktopBounds.width - bounds.maxX, Math.max(-bounds.minX, deltaX)),
+    y: Math.min(desktopBounds.height - bounds.maxY, Math.max(-bounds.minY, deltaY)),
+  };
+};
+
+const applyGroupDelta = (
+  origins: IconPositionsMap,
+  delta: { x: number; y: number }
+): IconPositionsMap =>
+  Object.fromEntries(
+    Object.entries(origins).map(([id, origin]) => [
+      id,
+      { x: origin.x + delta.x, y: origin.y + delta.y },
+    ])
+  );
 
 type DesktopIconProps = {
   app: DesktopApp;
@@ -56,11 +112,16 @@ const DesktopIcon = ({
     originX: 0,
     originY: 0,
   });
-  const groupDragState = useRef({
+  const groupDragState = useRef<{
+    active: boolean;
+    leaderId: string;
+    origins: IconPositionsMap;
+    bounds: GroupDragBounds;
+  }>({
     active: false,
     leaderId: "",
-    originX: 0,
-    originY: 0,
+    origins: {},
+    bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
   });
   const positionRef = useRef(position);
   const selectedIdsRef = useRef(selectedIds);
@@ -74,16 +135,16 @@ const DesktopIcon = ({
   }, [selectedIds]);
 
   const persistPosition = useCallback(
-    (next: { x: number; y: number }, excludedIds: string[] = []) =>
-      persistIconPosition(app.id, next, excludedIds),
-    [app.id]
+    (next: IconPositionsMap, excludedIds: string[] = []) =>
+      persistIconPositions(next, excludedIds),
+    []
   );
 
   const applySortedPosition = useEffectEvent(() => {
     if (!sortVersion) return;
     const resolved = getSortedIconPosition(app.id, appIndex);
     setPosition(resolved);
-    persistPosition(resolved, selectedIdsRef.current);
+    persistPosition({ [app.id]: resolved }, selectedIdsRef.current);
   });
 
   useEffect(() => {
@@ -93,44 +154,38 @@ const DesktopIcon = ({
   useEffect(() => {
     const onGroupDragStart = (event: Event) => {
       const detail = getGroupDragDetail<GroupDragStartDetail>(event);
-      if (!detail.selectedIds.includes(app.id) || detail.leaderId === app.id) return;
+      if (!detail.selectedIds.includes(app.id) || !detail.origins[app.id]) return;
       groupDragState.current = {
         active: true,
         leaderId: detail.leaderId,
-        originX: positionRef.current.x,
-        originY: positionRef.current.y,
+        origins: detail.origins,
+        bounds: detail.bounds,
       };
     };
 
     const onGroupDragMove = (event: Event) => {
       const detail = getGroupDragDetail<GroupDragMoveDetail>(event);
-      if (
-        !groupDragState.current.active ||
-        groupDragState.current.leaderId !== detail.leaderId
-      ) {
-        return;
-      }
-      const next = {
-        x: groupDragState.current.originX + detail.deltaX,
-        y: groupDragState.current.originY + detail.deltaY,
-      };
-      setPosition(clampPointToDesktop(next));
+      const group = groupDragState.current;
+      if (!group.active || group.leaderId !== detail.leaderId) return;
+
+      const delta = clampGroupDelta(group.bounds, detail.deltaX, detail.deltaY);
+      const origin = group.origins[app.id];
+      setPosition({ x: origin.x + delta.x, y: origin.y + delta.y });
     };
 
     const onGroupDragEnd = (event: Event) => {
-      const detail = getGroupDragDetail<GroupDragMoveDetail>(event);
-      if (
-        !groupDragState.current.active ||
-        groupDragState.current.leaderId !== detail.leaderId
-      ) {
-        return;
-      }
-      const released = clampPointToDesktop({
-        x: groupDragState.current.originX + detail.deltaX,
-        y: groupDragState.current.originY + detail.deltaY,
-      });
-      const snapped = persistPosition(released, selectedIdsRef.current);
-      setPosition(snapped);
+      const detail = getGroupDragDetail<GroupDragEndDetail>(event);
+      const group = groupDragState.current;
+      if (!group.active || group.leaderId !== detail.leaderId) return;
+
+      const delta = clampGroupDelta(group.bounds, detail.deltaX, detail.deltaY);
+      const origin = group.origins[app.id];
+      setPosition(
+        detail.positions[app.id] ?? {
+          x: origin.x + delta.x,
+          y: origin.y + delta.y,
+        }
+      );
       groupDragState.current.active = false;
       groupDragState.current.leaderId = "";
     };
@@ -147,17 +202,17 @@ const DesktopIcon = ({
       window.removeEventListener(GROUP_DRAG_MOVE_EVENT, onGroupDragMove as EventListener);
       window.removeEventListener(GROUP_DRAG_END_EVENT, onGroupDragEnd as EventListener);
     };
-  }, [app.id, persistPosition]);
+  }, [app.id]);
 
   useEffect(() => {
     const handleResize = () => {
       const next = clampPointToDesktop(positionRef.current);
       setPosition(next);
-      persistPosition(next, selectedIdsRef.current);
+      persistPosition({ [app.id]: next }, selectedIdsRef.current);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [persistPosition]);
+  }, [app.id, persistPosition]);
 
   if (hidden) return null;
 
@@ -188,10 +243,14 @@ const DesktopIcon = ({
             originY: position.y,
           };
           if (selected && selectedIds.length > 1) {
-            emitGroupDragStart({
-              leaderId: app.id,
-              selectedIds,
-            });
+            const snapshot = getGroupDragSnapshot(selectedIds);
+            if (Object.keys(snapshot.origins).length > 1) {
+              emitGroupDragStart({
+                leaderId: app.id,
+                selectedIds,
+                ...snapshot,
+              });
+            }
           }
           if (!selected && !event.shiftKey) {
             onSelect?.();
@@ -205,17 +264,20 @@ const DesktopIcon = ({
           if (!dragState.current.moved && (Math.abs(deltaX) > 0 || Math.abs(deltaY) > 0)) {
             dragState.current.moved = true;
           }
-          const next = {
-            x: dragState.current.originX + deltaX,
-            y: dragState.current.originY + deltaY,
-          };
-          setPosition(clampPointToDesktop(next));
-          if (selected && selectedIds.length > 1) {
+          const group = groupDragState.current;
+          if (group.active && group.leaderId === app.id) {
             emitGroupDragMove({
               leaderId: app.id,
               deltaX,
               deltaY,
             });
+          } else {
+            setPosition(
+              clampPointToDesktop({
+                x: dragState.current.originX + deltaX,
+                y: dragState.current.originY + deltaY,
+              })
+            );
           }
         }}
         onPointerUp={(event) => {
@@ -223,19 +285,25 @@ const DesktopIcon = ({
           event.stopPropagation();
           const deltaX = event.clientX - dragState.current.startX;
           const deltaY = event.clientY - dragState.current.startY;
-          const released = clampPointToDesktop({
-            x: dragState.current.originX + deltaX,
-            y: dragState.current.originY + deltaY,
-          });
           dragState.current.dragging = false;
-          const snapped = persistPosition(released, selectedIds);
-          setPosition(snapped);
-          if (selected && selectedIds.length > 1) {
+          const group = groupDragState.current;
+          if (group.active && group.leaderId === app.id) {
+            const delta = clampGroupDelta(group.bounds, deltaX, deltaY);
+            const released = applyGroupDelta(group.origins, delta);
+            const snapped = persistPosition(released, selectedIds);
             emitGroupDragEnd({
               leaderId: app.id,
               deltaX,
               deltaY,
+              positions: snapped,
             });
+          } else {
+            const released = clampPointToDesktop({
+              x: dragState.current.originX + deltaX,
+              y: dragState.current.originY + deltaY,
+            });
+            const snapped = persistPosition({ [app.id]: released }, selectedIds);
+            setPosition(snapped[app.id]);
           }
           event.currentTarget.releasePointerCapture(event.pointerId);
         }}

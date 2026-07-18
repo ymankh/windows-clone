@@ -140,14 +140,101 @@ export const getSortedIconPosition = (
   );
 };
 
+const resolveFreeGridGroup = (
+  candidates: IconPositionsMap,
+  positions: IconPositionsMap,
+  excludedIds: string[],
+  bounds = getIconDesktopBounds()
+): IconPositionsMap => {
+  const entries = Object.entries(candidates);
+  const excluded = new Set(excludedIds);
+  const occupied = new Set(
+    Object.entries(positions)
+      .filter(([id]) => !excluded.has(id))
+      .map(([, point]) => {
+        const snapped = snapToGrid(clampPointToDesktop(point, bounds));
+        return `${snapped.x},${snapped.y}`;
+      })
+  );
+  const minX = Math.min(...entries.map(([, point]) => point.x));
+  const minY = Math.min(...entries.map(([, point]) => point.y));
+  const maxX = Math.max(...entries.map(([, point]) => point.x));
+  const maxY = Math.max(...entries.map(([, point]) => point.y));
+  const offsets = entries.map(([id, point]) => ({
+    id,
+    x: point.x - minX,
+    y: point.y - minY,
+  }));
+  const maxColumn =
+    Math.floor(Math.max(0, bounds.width - (maxX - minX)) / GRID_COL_WIDTH) *
+    GRID_COL_WIDTH;
+  const maxRow =
+    Math.floor(Math.max(0, bounds.height - (maxY - minY)) / GRID_ROW_HEIGHT) *
+    GRID_ROW_HEIGHT;
+  const columns = Math.floor(maxColumn / GRID_COL_WIDTH) + 1;
+  const rows = Math.floor(maxRow / GRID_ROW_HEIGHT) + 1;
+  const snappedAnchor = snapToGrid({ x: Math.max(0, minX), y: Math.max(0, minY) });
+  let anchor = {
+    x: Math.min(maxColumn, snappedAnchor.x),
+    y: Math.min(maxRow, snappedAnchor.y),
+  };
+  let resolved: IconPositionsMap = {};
+
+  for (let attempts = 0; attempts < columns * rows; attempts += 1) {
+    resolved = Object.fromEntries(
+      offsets.map(({ id, x, y }) => [
+        id,
+        { x: anchor.x + x, y: anchor.y + y },
+      ])
+    );
+    if (
+      Object.values(resolved).every(
+        (point) => !occupied.has(`${point.x},${point.y}`)
+      )
+    ) {
+      return resolved;
+    }
+
+    const nextY = anchor.y + GRID_ROW_HEIGHT;
+    anchor =
+      nextY <= maxRow
+        ? { x: anchor.x, y: nextY }
+        : {
+            x: anchor.x + GRID_COL_WIDTH <= maxColumn
+              ? anchor.x + GRID_COL_WIDTH
+              : 0,
+            y: 0,
+          };
+  }
+
+  return resolved;
+};
+
+export const persistIconPositions = (
+  nextPositions: IconPositionsMap,
+  excludedIds: string[] = []
+): IconPositionsMap => {
+  const positions = readStoredIconPositions();
+  const groupIds = [...new Set([...excludedIds, ...Object.keys(nextPositions)])];
+  const entries = Object.entries(nextPositions);
+  const resolvedPositions =
+    entries.length > 1
+      ? resolveFreeGridGroup(nextPositions, positions, groupIds)
+      : Object.fromEntries(
+          entries.map(([appId, next]) => [
+            appId,
+            resolveFreeGridCell(next, positions, appId, groupIds),
+          ])
+        );
+
+  Object.assign(positions, resolvedPositions);
+
+  writeStoredIconPositions(positions);
+  return resolvedPositions;
+};
+
 export const persistIconPosition = (
   appId: string,
   next: IconPoint,
   excludedIds: string[] = []
-): IconPoint => {
-  const positions = readStoredIconPositions();
-  const resolved = resolveFreeGridCell(next, positions, appId, excludedIds);
-  positions[appId] = resolved;
-  writeStoredIconPositions(positions);
-  return resolved;
-};
+): IconPoint => persistIconPositions({ [appId]: next }, excludedIds)[appId];

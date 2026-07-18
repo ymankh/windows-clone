@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AppWindowComponentProps } from "../types";
 import type { SerializedEditorState } from "lexical";
 import { Editor } from "shadcn-editor/editor";
@@ -15,7 +15,7 @@ import {
 } from "./serialization";
 import { loadPersistedNote, persistNote } from "./persistence";
 
-
+const NOTE_SAVE_DELAY_MS = 300;
 const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentProps) => {
   const initialSerializedState = useMemo(() => {
     if (fileContext?.type === FileTypes.notes) {
@@ -38,15 +38,38 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
   );
   const [editorRevision, setEditorRevision] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
+  const pendingSaveRef = useRef<SerializedEditorState | undefined>(undefined);
+  const saveTimerRef = useRef<number | undefined>(undefined);
 
-  const handleSerializedChange = (next: SerializedEditorState) => {
-    setSerialized(next);
-    if (persistNote(windowId, next)) {
+  const savePendingNote = useCallback(() => {
+    window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = undefined;
+    const pending = pendingSaveRef.current;
+    if (!pending) return;
+    pendingSaveRef.current = undefined;
+
+    if (persistNote(windowId, pending)) {
       setFileError(null);
     } else {
       setFileError("This note could not be saved in browser storage.");
     }
+  }, [windowId]);
+
+  const handleSerializedChange = (next: SerializedEditorState) => {
+    setSerialized(next);
+    pendingSaveRef.current = next;
+    window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(savePendingNote, NOTE_SAVE_DELAY_MS);
   };
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(saveTimerRef.current);
+      const pending = pendingSaveRef.current;
+      if (pending) persistNote(windowId, pending);
+    },
+    [windowId]
+  );
 
   useEffect(() => {
     const handleCommand = (event: Event) => {

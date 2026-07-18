@@ -60,24 +60,27 @@ export const resolveFreeGridCell = (
   excludedIds: string[] = [],
   bounds = getIconDesktopBounds()
 ): IconPoint => {
+  const maxColumn = Math.floor(bounds.width / GRID_COL_WIDTH) * GRID_COL_WIDTH;
+  const maxRow = Math.floor(bounds.height / GRID_ROW_HEIGHT) * GRID_ROW_HEIGHT;
+  const normalizeCell = (point: IconPoint): IconPoint => {
+    const snapped = snapToGrid(clampPointToDesktop(point, bounds));
+    return {
+      x: Math.min(maxColumn, snapped.x),
+      y: Math.min(maxRow, snapped.y),
+    };
+  };
   const excluded = new Set(excludedIds);
   const occupied = new Set(
     Object.entries(positions)
       .filter(([id]) => id !== currentAppId && !excluded.has(id))
       .map(([, point]) => {
-        const snapped = snapToGrid(clampPointToDesktop(point, bounds));
-        return `${snapped.x},${snapped.y}`;
+        const normalized = normalizeCell(point);
+        return `${normalized.x},${normalized.y}`;
       })
   );
-  const maxColumn = Math.floor(bounds.width / GRID_COL_WIDTH) * GRID_COL_WIDTH;
-  const maxRow = Math.floor(bounds.height / GRID_ROW_HEIGHT) * GRID_ROW_HEIGHT;
   const columns = Math.floor(maxColumn / GRID_COL_WIDTH) + 1;
   const rows = Math.floor(maxRow / GRID_ROW_HEIGHT) + 1;
-  let resolved = snapToGrid(clampPointToDesktop(candidate, bounds));
-  resolved = {
-    x: Math.min(maxColumn, resolved.x),
-    y: Math.min(maxRow, resolved.y),
-  };
+  let resolved = normalizeCell(candidate);
 
   for (let attempts = 0; attempts < columns * rows; attempts += 1) {
     if (!occupied.has(`${resolved.x},${resolved.y}`)) return resolved;

@@ -207,8 +207,8 @@ const DesktopIcon = ({
   useEffect(() => {
     const handleResize = () => {
       const next = clampPointToDesktop(positionRef.current);
-      setPosition(next);
-      persistPosition({ [app.id]: next }, selectedIdsRef.current);
+      const resolved = persistPosition({ [app.id]: next }, selectedIdsRef.current);
+      setPosition(resolved[app.id]);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);

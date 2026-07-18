@@ -124,7 +124,7 @@ export const getSortedIconPosition = (
   appIndex: number,
   rowsPerColumn?: number
 ): IconPoint => {
-  const positions = readStoredIconPositions();
+  const positions: IconPositionsMap = {};
   const bounds = getIconDesktopBounds();
   const rowCount =
     rowsPerColumn ?? Math.floor(bounds.height / GRID_ROW_HEIGHT) + 1;

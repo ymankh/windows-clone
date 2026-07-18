@@ -51,9 +51,6 @@ const Window = ({ id, title, icon }: WindowProps) => {
     startDrag,
     startResize,
     toggleMaximize,
-    resetDragState,
-    handlePointerMove,
-    handlePointerUp,
     startSplitResize,
   } = useWindowInteractions({
     id,
@@ -188,9 +185,6 @@ const Window = ({ id, title, icon }: WindowProps) => {
               titleId={titleId}
               layoutMode={layoutMode}
               onDragPointerDown={startDrag}
-              onDragPointerMove={(event) => handlePointerMove(event.nativeEvent)}
-              onDragPointerUp={(event) => handlePointerUp(event.nativeEvent)}
-              onDragPointerCancel={resetDragState}
               onMinimize={(event) => {
                 stop(event);
                 minimizeWindow(id);

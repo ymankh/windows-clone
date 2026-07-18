@@ -1,4 +1,5 @@
-import type { DesktopApp } from "./types";
+import { createElement } from "react";
+import type { AppWindowComponentProps, DesktopApp } from "./types";
 import type { WindowMenu } from "@/desktop/stores/WindowsStore";
 import type { FileType } from "./fileTypes";
 
@@ -41,7 +42,8 @@ export const buildAppWindow = (
     id: windowId,
     title: options.title ?? app.title,
     icon: app.icon,
-    contentComponent: app.Component,
+    contentComponent: (props: AppWindowComponentProps) =>
+      createElement(app.Component, props),
     contentProps: { windowId, fileContext: validatedFileContext },
     minWidth: app.minSize?.width,
     minHeight: app.minSize?.height,

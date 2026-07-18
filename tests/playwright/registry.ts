@@ -90,7 +90,8 @@ export const testRegistry: TestDefinition[] = [
     id: "window.close",
     feature: "Window manager",
     title: "Close windows and remove taskbar entries",
-    status: "planned",
+    status: "implemented",
+    spec: "tests/playwright/specs/window.lifecycle.spec.ts",
     details: "Verify close removes the window and its taskbar button.",
   },
   {
@@ -132,7 +133,8 @@ export const testRegistry: TestDefinition[] = [
     id: "taskbar.window.toggle",
     feature: "Taskbar",
     title: "Focus and restore windows from the taskbar",
-    status: "planned",
+    status: "implemented",
+    spec: "tests/playwright/specs/window.lifecycle.spec.ts",
     details: "Verify taskbar buttons restore minimized windows and focus active ones.",
   },
   {
@@ -176,7 +178,8 @@ export const testRegistry: TestDefinition[] = [
     id: "files.open.notes",
     feature: "Files",
     title: "Open note files in Notes",
-    status: "planned",
+    status: "implemented",
+    spec: "tests/playwright/specs/files.open.spec.ts",
     details: "Verify Explorer opens notes files in the Notes app with file data.",
   },
   {
@@ -197,7 +200,8 @@ export const testRegistry: TestDefinition[] = [
     id: "files.open.fallback",
     feature: "Files",
     title: "Show fallback behavior for unsupported file types",
-    status: "planned",
+    status: "implemented",
+    spec: "tests/playwright/specs/files.open.spec.ts",
     details: "Verify unsupported file types do not break the UI and surface the intended fallback.",
   },
   {

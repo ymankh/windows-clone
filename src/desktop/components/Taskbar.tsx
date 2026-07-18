@@ -7,11 +7,13 @@ const Taskbar = () => {
   const activateWindow = useWindowsManagerStore((state) => state.activateWindow);
   const minimizeWindow = useWindowsManagerStore((state) => state.minimizeWindow);
 
-  const activeWindowId = windows.reduce<string | null>((topId, win) => {
-    if (win.isMinimized) return topId;
-    const currentTop = topId ? windows.find((candidate) => candidate.id === topId) : undefined;
-    return !currentTop || win.zIndex > currentTop.zIndex ? win.id : topId;
-  }, null);
+  const activeWindowId = windows.reduce<{ id: string; zIndex: number } | null>(
+    (top, win) =>
+      !win.isMinimized && (!top || win.zIndex > top.zIndex)
+        ? { id: win.id, zIndex: win.zIndex }
+        : top,
+    null
+  )?.id ?? null;
 
   const handleClick = (id: string, isMinimized: boolean) => {
     if (!isMinimized && id === activeWindowId) {

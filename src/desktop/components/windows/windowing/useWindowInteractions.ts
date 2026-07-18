@@ -54,7 +54,7 @@ type ResizeState = {
   startPosY: number;
 };
 
-type ResizeMoveEvent = PointerEvent;
+type ResizeMoveEvent = PointerEvent | MouseEvent;
 
 const createIdleDragState = (): DragState => ({
   dragging: false,
@@ -102,21 +102,25 @@ export const useWindowInteractions = ({
   );
 
   const [dockPreview, setDockPreview] = useState<DockTarget>(null);
+  const dockTargetRef = useRef<DockTarget>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [isDockAnimating, setIsDockAnimating] = useState(false);
-  const dockAnimationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dockAnimationTimer = useRef<number | undefined>(undefined);
   const previousBoundsRef = useRef<Bounds | null>(null);
   const dragState = useRef<DragState>(createIdleDragState());
   const resizeState = useRef<ResizeState>(createIdleResizeState());
   const splitResizeActive = useRef(false);
+  const dragListenersAbort = useRef<AbortController | undefined>(undefined);
+  const resizeListenersAbort = useRef<AbortController | undefined>(undefined);
+  const splitResizeListenersAbort = useRef<AbortController | undefined>(undefined);
   const layoutMode = windowData.layoutMode;
   const minWidth = Math.max(MIN_WINDOW_WIDTH, windowData.minWidth);
   const minHeight = Math.max(MIN_WINDOW_HEIGHT, windowData.minHeight);
 
   const startBoundsAnimation = useCallback(() => {
-    if (dockAnimationTimer.current) clearTimeout(dockAnimationTimer.current);
+    clearTimeout(dockAnimationTimer.current);
     setIsDockAnimating(true);
-    dockAnimationTimer.current = setTimeout(
+    dockAnimationTimer.current = window.setTimeout(
       () => setIsDockAnimating(false),
       DOCK_ANIMATION_DURATION_MS
     );
@@ -184,11 +188,12 @@ export const useWindowInteractions = ({
 
   const resetDragState = useCallback(() => {
     dragState.current = createIdleDragState();
+    dockTargetRef.current = null;
     setDockPreview(null);
   }, []);
 
   const handlePointerMove = useCallback(
-    (event: PointerEvent) => {
+    (event: PointerEvent | MouseEvent) => {
       if (!dragState.current.dragging) return;
       event.preventDefault();
 
@@ -204,14 +209,18 @@ export const useWindowInteractions = ({
       );
 
       updateWindowPosition(id, nextX, nextY);
-      setDockPreview(getDockTarget(event.clientX, event.clientY));
+      const target = getDockTarget(event.clientX, event.clientY);
+      dockTargetRef.current = target;
+      setDockPreview(target);
     },
     [id, updateWindowPosition]
   );
 
   const handlePointerUp = useCallback(
-    (event: PointerEvent) => {
-      const dockTarget = getDockTarget(event.clientX, event.clientY);
+    (event: PointerEvent | MouseEvent) => {
+      dragListenersAbort.current?.abort();
+      dragListenersAbort.current = undefined;
+      const dockTarget = dockTargetRef.current ?? getDockTarget(event.clientX, event.clientY);
       if (dragState.current.dragging && dockTarget) {
         applyDock(dockTarget);
       }
@@ -241,7 +250,7 @@ export const useWindowInteractions = ({
 
       if (dockAnimationTimer.current) {
         clearTimeout(dockAnimationTimer.current);
-        dockAnimationTimer.current = null;
+        dockAnimationTimer.current = undefined;
       }
       setIsDockAnimating(false);
       activateWindow(id);
@@ -296,10 +305,22 @@ export const useWindowInteractions = ({
         maxY: Math.max(0, viewportHeight - TASKBAR_HEIGHT - height),
       };
       event.currentTarget.setPointerCapture(event.pointerId);
+      dragListenersAbort.current?.abort();
+      const listenersAbort = new AbortController();
+      dragListenersAbort.current = listenersAbort;
+      const listenerOptions = { signal: listenersAbort.signal };
+      const endListenerOptions = { once: true, signal: listenersAbort.signal };
+      window.addEventListener("pointermove", handlePointerMove, listenerOptions);
+      window.addEventListener("mousemove", handlePointerMove, listenerOptions);
+      window.addEventListener("pointerup", handlePointerUp, endListenerOptions);
+      window.addEventListener("mouseup", handlePointerUp, endListenerOptions);
+      window.addEventListener("pointercancel", handlePointerUp, endListenerOptions);
     },
     [
       activateWindow,
       id,
+      handlePointerMove,
+      handlePointerUp,
       layoutMode,
       minHeight,
       minWidth,
@@ -377,8 +398,9 @@ export const useWindowInteractions = ({
   const handleResizeUp = useCallback(() => {
     resizeState.current.resizing = false;
     setIsResizing(false);
-    window.removeEventListener("pointermove", handleResizeMove);
-  }, [handleResizeMove]);
+    resizeListenersAbort.current?.abort();
+    resizeListenersAbort.current = undefined;
+  }, []);
 
   const handleSplitResizeMove = useCallback(
     (event: ResizeMoveEvent) => {
@@ -394,15 +416,23 @@ export const useWindowInteractions = ({
   const handleSplitResizeUp = useCallback(() => {
     splitResizeActive.current = false;
     setIsResizing(false);
-    window.removeEventListener("pointermove", handleSplitResizeMove);
-  }, [handleSplitResizeMove]);
+    splitResizeListenersAbort.current?.abort();
+    splitResizeListenersAbort.current = undefined;
+  }, []);
 
   const beginSplitResize = useCallback(() => {
     activateWindow(id);
     splitResizeActive.current = true;
     setIsResizing(true);
-    window.addEventListener("pointermove", handleSplitResizeMove);
-    window.addEventListener("pointerup", handleSplitResizeUp, { once: true });
+    splitResizeListenersAbort.current?.abort();
+    const listenersAbort = new AbortController();
+    splitResizeListenersAbort.current = listenersAbort;
+    const listenerOptions = { signal: listenersAbort.signal };
+    const endListenerOptions = { once: true, signal: listenersAbort.signal };
+    window.addEventListener("pointermove", handleSplitResizeMove, listenerOptions);
+    window.addEventListener("mousemove", handleSplitResizeMove, listenerOptions);
+    window.addEventListener("pointerup", handleSplitResizeUp, endListenerOptions);
+    window.addEventListener("mouseup", handleSplitResizeUp, endListenerOptions);
   }, [activateWindow, handleSplitResizeMove, handleSplitResizeUp, id]);
 
   const startSplitResize: React.PointerEventHandler<HTMLDivElement> = useCallback(
@@ -416,13 +446,12 @@ export const useWindowInteractions = ({
 
   useEffect(
     () => () => {
-      if (dockAnimationTimer.current) clearTimeout(dockAnimationTimer.current);
-      window.removeEventListener("pointermove", handleResizeMove);
-      window.removeEventListener("pointerup", handleResizeUp);
-      window.removeEventListener("pointermove", handleSplitResizeMove);
-      window.removeEventListener("pointerup", handleSplitResizeUp);
+      clearTimeout(dockAnimationTimer.current);
+      dragListenersAbort.current?.abort();
+      resizeListenersAbort.current?.abort();
+      splitResizeListenersAbort.current?.abort();
     },
-    [handleResizeMove, handleResizeUp, handleSplitResizeMove, handleSplitResizeUp]
+    []
   );
 
   const beginResize = useCallback(
@@ -449,8 +478,15 @@ export const useWindowInteractions = ({
         startPosX: windowData.x,
         startPosY: windowData.y,
       };
-      window.addEventListener("pointermove", handleResizeMove);
-      window.addEventListener("pointerup", handleResizeUp, { once: true });
+      resizeListenersAbort.current?.abort();
+      const listenersAbort = new AbortController();
+      resizeListenersAbort.current = listenersAbort;
+      const listenerOptions = { signal: listenersAbort.signal };
+      const endListenerOptions = { once: true, signal: listenersAbort.signal };
+      window.addEventListener("pointermove", handleResizeMove, listenerOptions);
+      window.addEventListener("mousemove", handleResizeMove, listenerOptions);
+      window.addEventListener("pointerup", handleResizeUp, endListenerOptions);
+      window.addEventListener("mouseup", handleResizeUp, endListenerOptions);
     },
     [activateWindow, handleResizeMove, handleResizeUp, id, layoutMode, windowData]
   );

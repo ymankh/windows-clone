@@ -205,6 +205,48 @@ test("[desktop.icon.drag.group] clamps selected icons as one group", async ({ pa
   });
 });
 
+test("[desktop.icon.drag.group] avoids occupied edge cells", async ({ page }) => {
+  await page.setViewportSize({ width: 300, height: 1000 });
+  await openDesktop(page);
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "desktop-icon-positions",
+      JSON.stringify({
+        browser: { x: 0, y: 0 },
+        notes: { x: 0, y: 140 },
+        music: { x: 204, y: 0 },
+        photos: { x: 0, y: 280 },
+        files: { x: 0, y: 420 },
+        terminal: { x: 0, y: 560 },
+        pdf: { x: 0, y: 700 },
+      })
+    );
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expectIconsInsideDesktop(page);
+
+  const browser = page.locator('[data-desktop-icon-id="browser"]');
+  const notes = page.locator('[data-desktop-icon-id="notes"]');
+  const browserBox = await browser.boundingBox();
+  expect(browserBox).not.toBeNull();
+
+  await browser.click();
+  await notes.click({ modifiers: ["Shift"] });
+  await page.mouse.move(
+    browserBox!.x + browserBox!.width / 2,
+    browserBox!.y + browserBox!.height / 2
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    browserBox!.x + browserBox!.width / 2 + 120,
+    browserBox!.y + browserBox!.height / 2,
+    { steps: 5 }
+  );
+  await page.mouse.up();
+
+  await expectIconsInsideDesktop(page);
+});
+
 test("[persistence.malformed] recovers from malformed persisted desktop values", async ({
   page,
 }) => {

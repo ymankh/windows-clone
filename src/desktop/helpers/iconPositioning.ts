@@ -151,12 +151,19 @@ const resolveFreeGridGroup = (
 ): IconPositionsMap => {
   const entries = Object.entries(candidates);
   const excluded = new Set(excludedIds);
+  const occupiedMaxColumn =
+    Math.floor(bounds.width / GRID_COL_WIDTH) * GRID_COL_WIDTH;
+  const occupiedMaxRow =
+    Math.floor(bounds.height / GRID_ROW_HEIGHT) * GRID_ROW_HEIGHT;
   const occupied = new Set(
     Object.entries(positions)
       .filter(([id]) => !excluded.has(id))
       .map(([, point]) => {
         const snapped = snapToGrid(clampPointToDesktop(point, bounds));
-        return `${snapped.x},${snapped.y}`;
+        return `${Math.min(occupiedMaxColumn, snapped.x)},${Math.min(
+          occupiedMaxRow,
+          snapped.y
+        )}`;
       })
   );
   const minX = Math.min(...entries.map(([, point]) => point.x));

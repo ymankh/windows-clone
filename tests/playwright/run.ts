@@ -1,16 +1,10 @@
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { getImplementedTests, getTestById, testRegistry } from "./registry";
 
 const args = process.argv.slice(2);
-const port = Number(process.env.APP_PORT ?? "4175");
-const host = process.env.APP_HOST ?? "127.0.0.1";
-const baseURL = process.env.APP_URL ?? `http://${host}:${port}`;
 const playwrightCli = fileURLToPath(
   new URL("../../node_modules/@playwright/test/cli.js", import.meta.url)
-);
-const viteCli = fileURLToPath(
-  new URL("../../node_modules/vite/bin/vite.js", import.meta.url)
 );
 
 const getArgValue = (flag: string) => {
@@ -72,41 +66,13 @@ if (requestedTest && (requestedTest.status !== "implemented" || !requestedTest.s
   process.exit(1);
 }
 
-const waitForServer = async () => {
-  const deadline = Date.now() + 120_000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(baseURL);
-      if (response.ok) return;
-    } catch {
-      // Vite is still starting.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error(`Timed out waiting for ${baseURL}`);
-};
+const testArgs = [playwrightCli, "test"];
+if (requestedTest?.spec) testArgs.push(requestedTest.spec);
+testArgs.push("--config", "playwright.config.ts");
 
-let server: ChildProcess | undefined;
+const result = spawnSync(process.execPath, testArgs, {
+  stdio: "inherit",
+  env: process.env,
+});
 
-try {
-  if (!process.env.APP_URL) {
-    server = spawn(process.execPath, [viteCli, "--host", host, "--port", String(port)], {
-      stdio: "ignore",
-      windowsHide: true,
-    });
-    await waitForServer();
-  }
-
-  const testArgs = [playwrightCli, "test"];
-  if (requestedTest?.spec) testArgs.push(requestedTest.spec);
-  testArgs.push("--config", "playwright.config.ts");
-
-  const result = spawnSync(process.execPath, testArgs, {
-    stdio: "inherit",
-    env: { ...process.env, APP_URL: baseURL },
-  });
-
-  process.exitCode = result.status ?? 1;
-} finally {
-  server?.kill();
-}
+process.exitCode = result.status ?? 1;

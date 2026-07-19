@@ -53,5 +53,6 @@ export const BrowserApp: DesktopApp = {
   title: "Browser",
   icon: Globe,
   Component: BrowserComponent,
+  minSize: { width: 480, height: 320 },
   createMenubar: createBrowserMenubar,
 };

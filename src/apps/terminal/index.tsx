@@ -7,4 +7,5 @@ export const TerminalApp: DesktopApp = {
   title: "Terminal",
   icon: Terminal,
   Component: TerminalComponent,
+  minSize: { width: 420, height: 280 },
 };

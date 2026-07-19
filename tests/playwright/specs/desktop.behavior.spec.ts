@@ -114,6 +114,41 @@ test("[desktop.icon.sort] persists the complete rendered layout", async ({ page 
   await expect.poll(() => readIconPositions(page)).toEqual(rendered);
 });
 
+test("[desktop.icon.resize] keeps selected icons in distinct cells", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openDesktop(page);
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "desktop-icon-positions",
+      JSON.stringify({
+        browser: { x: 840, y: 0 },
+        notes: { x: 960, y: 0 },
+        music: { x: 0, y: 0 },
+        photos: { x: 0, y: 140 },
+        files: { x: 0, y: 280 },
+        terminal: { x: 0, y: 420 },
+        pdf: { x: 120, y: 140 },
+      })
+    );
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+
+  const browser = page.locator('[data-desktop-icon-id="browser"]');
+  const notes = page.locator('[data-desktop-icon-id="notes"]');
+  await browser.click();
+  await notes.click({ modifiers: ["Shift"] });
+  await page.setViewportSize({ width: 300, height: 720 });
+
+  await expect
+    .poll(async () => {
+      const positions = await readIconPositions(page);
+      return `${positions.browser.left},${positions.browser.top}` ===
+        `${positions.notes.left},${positions.notes.top}`;
+    })
+    .toBe(false);
+  await expectIconsInsideDesktop(page);
+});
+
 test("[desktop.icon.drag.group] clamps selected icons as one group", async ({ page }) => {
   await page.addInitScript(() => localStorage.removeItem("desktop-icon-positions"));
   await openDesktop(page);

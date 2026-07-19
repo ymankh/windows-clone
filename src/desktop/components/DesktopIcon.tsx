@@ -124,15 +124,11 @@ const DesktopIcon = ({
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
   });
   const positionRef = useRef(position);
-  const selectedIdsRef = useRef(selectedIds);
 
   useEffect(() => {
     positionRef.current = position;
   }, [position]);
 
-  useEffect(() => {
-    selectedIdsRef.current = selectedIds;
-  }, [selectedIds]);
 
   const persistPosition = useCallback(
     (next: IconPositionsMap, excludedIds: string[] = []) =>
@@ -205,7 +201,7 @@ const DesktopIcon = ({
   useEffect(() => {
     const handleResize = () => {
       const next = clampPointToDesktop(positionRef.current);
-      const resolved = persistPosition({ [app.id]: next }, selectedIdsRef.current);
+      const resolved = persistPosition({ [app.id]: next });
       setPosition(resolved[app.id]);
     };
     window.addEventListener("resize", handleResize);

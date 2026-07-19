@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode, SVGProps } from "react";
+import type { AppWindowComponentProps } from "@/apps/types";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import {
@@ -6,7 +6,6 @@ import {
   MIN_WINDOW_WIDTH,
 } from "../components/windows/windowing/constants";
 
-type WindowIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 export const WindowLayoutModes = {
   normal: "normal",
@@ -50,8 +49,8 @@ export interface WindowState {
   title: string;
   isMinimized: boolean;
   zIndex: number;
-  icon: WindowIcon;
-  component: ReactNode;
+  appId: string;
+  fileContext?: AppWindowComponentProps["fileContext"];
   x: number;
   y: number;
   width: number;
@@ -59,14 +58,13 @@ export interface WindowState {
   minWidth: number;
   minHeight: number;
   layoutMode: WindowLayoutMode;
-  menubar?: WindowMenu[];
 }
 
 type OpenWindowPayload = {
   id: string;
   title: string;
-  icon: WindowIcon;
-  component: ReactNode;
+  appId: string;
+  fileContext?: AppWindowComponentProps["fileContext"];
   x?: number;
   y?: number;
   width?: number;
@@ -74,17 +72,15 @@ type OpenWindowPayload = {
   minWidth?: number;
   minHeight?: number;
   zIndex?: number;
-  menubar?: WindowMenu[];
 };
 
 interface WindowsManagerStore {
   windows: WindowState[];
   horizontalDockSplit: number;
   openWindow: (window: OpenWindowPayload) => void;
+  minimizeWindow: (id: string) => void;
+  activateWindow: (id: string) => void;
   closeWindow: (id: string) => void;
-  toggleWindow: (id: string) => void;
-  focusWindow: (id: string) => void;
-  removeWindow: (id: string) => void;
   setWindowLayoutMode: (id: string, layoutMode: WindowLayoutMode) => void;
   setHorizontalDockSplit: (split: number) => void;
   updateWindowPosition: (id: string, x: number, y: number) => void;
@@ -124,8 +120,8 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
 
         if (existingWindow) {
           existingWindow.title = win.title;
-          existingWindow.icon = win.icon;
-          existingWindow.component = win.component;
+          existingWindow.appId = win.appId;
+          existingWindow.fileContext = win.fileContext;
           existingWindow.isMinimized = false;
           existingWindow.zIndex = zIndex;
           if (win.x !== undefined) existingWindow.x = win.x;
@@ -138,7 +134,6 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           if (win.height !== undefined) {
             existingWindow.height = Math.max(existingWindow.minHeight, win.height);
           }
-          if (win.menubar !== undefined) existingWindow.menubar = win.menubar;
           return;
         }
 
@@ -146,7 +141,8 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           ...win,
           isMinimized: false,
           zIndex,
-          icon: win.icon,
+          appId: win.appId,
+          fileContext: win.fileContext,
           x: win.x ?? fallbackX,
           y: win.y ?? fallbackY,
           width: fallbackWidth,
@@ -154,34 +150,22 @@ const useWindowsManagerStore = create<WindowsManagerStore>()(
           minWidth,
           minHeight,
           layoutMode: WindowLayoutModes.normal,
-          menubar: win.menubar,
         });
       }),
-    closeWindow: (id) =>
+    minimizeWindow: (id) =>
       set((state) => {
         const window = state.windows.find(({ id: windowId }) => windowId === id);
         if (!window) return;
         window.isMinimized = true;
       }),
-    toggleWindow: (id) =>
-      set((state) => {
-        const window = state.windows.find(({ id: windowId }) => windowId === id);
-        if (!window) return;
-
-        const willMinimize = !window.isMinimized;
-        window.isMinimized = willMinimize;
-        if (!willMinimize) {
-          window.zIndex = getNextZIndex(state.windows);
-        }
-      }),
-    focusWindow: (id) =>
+    activateWindow: (id) =>
       set((state) => {
         const window = state.windows.find(({ id: windowId }) => windowId === id);
         if (!window) return;
         window.isMinimized = false;
         window.zIndex = getNextZIndex(state.windows);
       }),
-    removeWindow: (id) =>
+    closeWindow: (id) =>
       set((state) => {
         state.windows = state.windows.filter(({ id: windowId }) => windowId !== id);
       }),

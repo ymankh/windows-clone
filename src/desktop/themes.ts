@@ -16,8 +16,8 @@ export const DEFAULT_THEME_ID = "default";
 export const themes: ThemeDefinition[] = [
   {
     id: DEFAULT_THEME_ID,
-    name: "Oxanium Default",
-    description: "Current desktop look & feel",
+    name: "System Default",
+    description: "Native system fonts with the default desktop palette",
     swatch: {
       background: "#d8d8d8",
       foreground: "#3d3d3d",
@@ -69,9 +69,9 @@ export const themes: ThemeDefinition[] = [
   --sidebar-accent-foreground: oklch(1.0000 0 0);
   --sidebar-border: oklch(0.8866 0.0404 89.6994);
   --sidebar-ring: oklch(0.5553 0.1455 48.9975);
-  --font-sans: Oxanium, sans-serif;
-  --font-serif: Merriweather, serif;
-  --font-mono: Fira Code, monospace;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --radius: 0.3rem;
   --shadow-x: 0px;
   --shadow-y: 2px;
@@ -124,9 +124,9 @@ export const themes: ThemeDefinition[] = [
   --sidebar-accent-foreground: oklch(0.2839 0.0734 254.5378);
   --sidebar-border: oklch(0.3741 0.0087 67.5582);
   --sidebar-ring: oklch(0.7049 0.1867 47.6044);
-  --font-sans: Oxanium, sans-serif;
-  --font-serif: Merriweather, serif;
-  --font-mono: Fira Code, monospace;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --radius: 0.3rem;
   --shadow-x: 0px;
   --shadow-y: 2px;
@@ -189,9 +189,9 @@ export const themes: ThemeDefinition[] = [
   --sidebar-accent-foreground: oklch(0.4015 0.0436 37.9587);
   --sidebar-border: oklch(0.8078 0 0);
   --sidebar-ring: oklch(0.7058 0 0);
-  --font-sans: Architects Daughter, sans-serif;
-  --font-serif: "Times New Roman", Times, serif;
-  --font-mono: "Courier New", Courier, monospace;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --radius: 0.625rem;
   --shadow-x: 1px;
   --shadow-y: 4px;
@@ -244,9 +244,9 @@ export const themes: ThemeDefinition[] = [
   --sidebar-accent-foreground: oklch(0.3211 0 0);
   --sidebar-border: oklch(0.4276 0 0);
   --sidebar-ring: oklch(0.8078 0 0);
-  --font-sans: Architects Daughter, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: "Fira Code", "Courier New", monospace;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --radius: 0.625rem;
   --shadow-x: 1px;
   --shadow-y: 4px;
@@ -371,9 +371,9 @@ body {
   --sidebar-accent-foreground: oklch(0.6723 0.1606 244.9955);
   --sidebar-border: oklch(0.9271 0.0101 238.5177);
   --sidebar-ring: oklch(0.6818 0.1584 243.3540);
-  --font-sans: Open Sans, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --radius: 1.3rem;
   --shadow-x: 0px;
   --shadow-y: 2px;
@@ -426,9 +426,9 @@ body {
   --sidebar-accent-foreground: oklch(0.6692 0.1607 245.0110);
   --sidebar-border: oklch(0.3795 0.0220 240.5943);
   --sidebar-ring: oklch(0.6818 0.1584 243.3540);
-  --font-sans: Open Sans, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --radius: 1.3rem;
   --shadow-x: 0px;
   --shadow-y: 2px;
@@ -543,9 +543,9 @@ body {
   --sidebar-accent-foreground: oklch(0.8686 0.2776 144.4661);
   --sidebar-border: oklch(0.3053 0.1039 142.4953);
   --sidebar-ring: oklch(0.8686 0.2776 144.4661);
-  --font-sans: "VT323", "Courier New", monospace;
-  --font-serif: Georgia, serif;
-  --font-mono: "VT323", monospace;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --radius: 0rem;
   --shadow-x: 0px;
   --shadow-y: 0px;
@@ -598,9 +598,9 @@ body {
   --sidebar-accent-foreground: oklch(0.8686 0.2776 144.4661);
   --sidebar-border: oklch(0.3053 0.1039 142.4953);
   --sidebar-ring: oklch(0.8686 0.2776 144.4661);
-  --font-sans: "VT323", "Courier New", monospace;
-  --font-serif: Georgia, serif;
-  --font-mono: "VT323", monospace;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --radius: 0rem;
   --shadow-x: 0px;
   --shadow-y: 0px;

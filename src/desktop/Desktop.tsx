@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { DesktopApp } from "../apps";
+import { PersonalizationApp, type DesktopApp } from "../apps";
+import { buildAppWindow } from "../apps/windowBuilder";
 import DesktopIcon from "./components/DesktopIcon";
 import Window from "./components/windows/Window";
 import Taskbar from "./components/Taskbar";
 import useWindowsManagerStore from "./stores/WindowsStore";
 import DesktopContextMenu from "./components/DesktopContextMenu";
-import PersonalizationWindow from "./modules/personalization/components/PersonalizationWindow";
-import { Palette } from "lucide-react";
 import useThemeStore from "./modules/personalization/store/ThemeStore";
 import {
   collectIntersectedIconIds,
@@ -17,6 +16,11 @@ import {
   type SelectionRect,
 } from "./helpers/marqueeSelection";
 import { toggleIconSelection } from "./helpers/iconSelection";
+import {
+  getSortedIconPosition,
+  persistIconPositions,
+  type IconPositionsMap,
+} from "./helpers/iconPositioning";
 
 type DesktopProps = {
   apps: DesktopApp[];
@@ -25,7 +29,7 @@ type DesktopProps = {
 const Desktop = ({ apps }: DesktopProps) => {
   const windows = useWindowsManagerStore((state) => state.windows);
   const openWindow = useWindowsManagerStore((state) => state.openWindow);
-  const [sortCounter, setSortCounter] = useState(0);
+  const [sortedIconPositions, setSortedIconPositions] = useState<IconPositionsMap>({});
   const [selectedIconIds, setSelectedIconIds] = useState<string[]>([]);
   const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(null);
   const marqueeState = useRef<{
@@ -44,14 +48,27 @@ const Desktop = ({ apps }: DesktopProps) => {
   }, [applyTheme]);
 
   const openPersonalization = () =>
-    openWindow({
-      id: "personalization",
-      title: "Personalization",
-      icon: Palette,
-      component: <PersonalizationWindow />,
-      width: 860,
-      height: 560,
-    });
+    openWindow(
+      buildAppWindow(PersonalizationApp, {
+        windowId: "personalization",
+        title: "Personalization",
+      })
+    );
+
+  const sortIcons = () => {
+    const candidates = Object.fromEntries(
+      apps.map((app, appIndex) => [
+        app.id,
+        getSortedIconPosition(app.id, appIndex),
+      ])
+    );
+    setSortedIconPositions(
+      persistIconPositions(
+        candidates,
+        apps.map((app) => app.id)
+      )
+    );
+  };
 
   return (
     <div
@@ -64,7 +81,7 @@ const Desktop = ({ apps }: DesktopProps) => {
       }}
     >
       <DesktopContextMenu
-        onSort={() => setSortCounter((n) => n + 1)}
+        onSort={sortIcons}
         onOpenPersonalization={openPersonalization}
       >
         <div
@@ -138,11 +155,12 @@ const Desktop = ({ apps }: DesktopProps) => {
             setSelectedIconIds([]);
           }}
         >
-          {apps.map((app) => (
+          {apps.map((app, appIndex) => (
             <DesktopIcon
               key={app.id}
               app={app}
-              sortVersion={sortCounter}
+              appIndex={appIndex}
+              sortedPosition={sortedIconPositions[app.id]}
               selected={selectedIconIds.includes(app.id)}
               selectedIds={selectedIconIds}
               onSelect={(options) =>
@@ -166,9 +184,7 @@ const Desktop = ({ apps }: DesktopProps) => {
       </DesktopContextMenu>
 
       {windows.map((win) => (
-        <Window key={win.id} id={win.id} title={win.title} icon={win.icon}>
-          {win.component}
-        </Window>
+        <Window key={win.id} id={win.id} />
       ))}
 
       <Taskbar />

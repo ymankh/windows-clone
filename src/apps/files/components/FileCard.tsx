@@ -28,9 +28,8 @@ export const FileCard = ({
     onOpen={onOpen}
     onOpenWith={onOpenWith}
   >
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       className={cn(
         "group flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-card/60 p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-border hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
         selected && "border-primary bg-primary/10 ring-2 ring-primary/40"
@@ -40,14 +39,6 @@ export const FileCard = ({
         if (item.type === "folder") onOpenFolder();
         else onOpen();
       }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect();
-          if (item.type === "folder") onOpenFolder();
-          else onOpen();
-        }
-      }}
     >
       <FileIcon item={item} />
       <div className="min-w-0">
@@ -56,6 +47,6 @@ export const FileCard = ({
           {item.meta ?? (item.type === "folder" ? "Folder" : "File")}
         </div>
       </div>
-    </div>
+    </button>
   </FileContextMenu>
 );

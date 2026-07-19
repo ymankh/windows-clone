@@ -1,6 +1,8 @@
 import { Folder } from "lucide-react";
+import { lazy } from "react";
 import type { DesktopApp } from "../types";
-import FilesComponent from "./Component";
+
+const FilesComponent = lazy(() => import("./Component"));
 
 export const FilesApp: DesktopApp = {
   id: "files",

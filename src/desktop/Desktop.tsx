@@ -16,6 +16,11 @@ import {
   type SelectionRect,
 } from "./helpers/marqueeSelection";
 import { toggleIconSelection } from "./helpers/iconSelection";
+import {
+  getSortedIconPosition,
+  persistIconPositions,
+  type IconPositionsMap,
+} from "./helpers/iconPositioning";
 
 type DesktopProps = {
   apps: DesktopApp[];
@@ -24,7 +29,7 @@ type DesktopProps = {
 const Desktop = ({ apps }: DesktopProps) => {
   const windows = useWindowsManagerStore((state) => state.windows);
   const openWindow = useWindowsManagerStore((state) => state.openWindow);
-  const [sortCounter, setSortCounter] = useState(0);
+  const [sortedIconPositions, setSortedIconPositions] = useState<IconPositionsMap>({});
   const [selectedIconIds, setSelectedIconIds] = useState<string[]>([]);
   const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(null);
   const marqueeState = useRef<{
@@ -50,6 +55,21 @@ const Desktop = ({ apps }: DesktopProps) => {
       })
     );
 
+  const sortIcons = () => {
+    const candidates = Object.fromEntries(
+      apps.map((app, appIndex) => [
+        app.id,
+        getSortedIconPosition(app.id, appIndex),
+      ])
+    );
+    setSortedIconPositions(
+      persistIconPositions(
+        candidates,
+        apps.map((app) => app.id)
+      )
+    );
+  };
+
   return (
     <div
       className="relative min-h-screen w-full bg-background text-foreground"
@@ -61,7 +81,7 @@ const Desktop = ({ apps }: DesktopProps) => {
       }}
     >
       <DesktopContextMenu
-        onSort={() => setSortCounter((n) => n + 1)}
+        onSort={sortIcons}
         onOpenPersonalization={openPersonalization}
       >
         <div
@@ -140,7 +160,7 @@ const Desktop = ({ apps }: DesktopProps) => {
               key={app.id}
               app={app}
               appIndex={appIndex}
-              sortVersion={sortCounter}
+              sortedPosition={sortedIconPositions[app.id]}
               selected={selectedIconIds.includes(app.id)}
               selectedIds={selectedIconIds}
               onSelect={(options) =>

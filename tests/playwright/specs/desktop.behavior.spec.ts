@@ -75,6 +75,45 @@ test("[desktop.icon.layout] places icons deterministically in unique usable boun
   await expect.poll(() => readIconPositions(page)).toEqual(initialPositions);
 });
 
+test("[desktop.icon.sort] persists the complete rendered layout", async ({ page }) => {
+  await openDesktop(page);
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "desktop-icon-positions",
+      JSON.stringify({
+        browser: { x: 120, y: 280 },
+        notes: { x: 120, y: 140 },
+        music: { x: 120, y: 0 },
+        photos: { x: 0, y: 420 },
+        files: { x: 0, y: 280 },
+        terminal: { x: 0, y: 140 },
+        pdf: { x: 0, y: 0 },
+      })
+    );
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+
+  const desktopSurface = page.locator("div.flex.min-h-screen.w-full.flex-wrap");
+  await desktopSurface.click({ button: "right", position: { x: 1000, y: 600 } });
+  await page.getByRole("menuitem", { name: "Sort by Name" }).click();
+
+  const rendered = await readIconPositions(page);
+  const stored = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("desktop-icon-positions") ?? "{}")
+  );
+  expect(stored).toEqual(
+    Object.fromEntries(
+      Object.entries(rendered).map(([id, point]) => [
+        id,
+        { x: point.left, y: point.top },
+      ])
+    )
+  );
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect.poll(() => readIconPositions(page)).toEqual(rendered);
+});
+
 test("[desktop.icon.drag.group] clamps selected icons as one group", async ({ page }) => {
   await page.addInitScript(() => localStorage.removeItem("desktop-icon-positions"));
   await openDesktop(page);

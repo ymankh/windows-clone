@@ -9,8 +9,8 @@ import {
   clampPointToDesktop,
   getIconDesktopBounds,
   getInitialIconPosition,
-  getSortedIconPosition,
   persistIconPositions,
+  type IconPoint,
   type IconPositionsMap,
 } from "../helpers/iconPositioning";
 import {
@@ -82,7 +82,7 @@ const applyGroupDelta = (
 type DesktopIconProps = {
   app: DesktopApp;
   appIndex: number;
-  sortVersion?: number;
+  sortedPosition?: IconPoint;
   selected?: boolean;
   selectedIds?: string[];
   onSelect?: (options?: { additive?: boolean; toggle?: boolean }) => void;
@@ -92,7 +92,7 @@ type DesktopIconProps = {
 const DesktopIcon = ({
   app,
   appIndex,
-  sortVersion = 0,
+  sortedPosition,
   selected = false,
   selectedIds = [],
   onSelect,
@@ -141,15 +141,13 @@ const DesktopIcon = ({
   );
 
   const applySortedPosition = useEffectEvent(() => {
-    if (!sortVersion) return;
-    const resolved = getSortedIconPosition(app.id, appIndex);
-    setPosition(resolved);
-    persistPosition({ [app.id]: resolved }, selectedIdsRef.current);
+    if (!sortedPosition) return;
+    setPosition(sortedPosition);
   });
 
   useEffect(() => {
     applySortedPosition();
-  }, [sortVersion]);
+  }, [sortedPosition]);
 
   useEffect(() => {
     const onGroupDragStart = (event: Event) => {

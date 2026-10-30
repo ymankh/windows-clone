@@ -1,9 +1,11 @@
 import { FileDown } from "lucide-react";
+import { lazy } from "react";
 import type { DesktopApp } from "../types";
 import { FileTypes } from "../fileTypes";
-import PdfComponent, { PDF_FILE_URL } from "./Component";
-import { PdfZoomActions } from "./constants";
+import { PDF_FILE_URL, PdfZoomActions } from "./constants";
 import { pdfFileDataSchema } from "./schema";
+
+const PdfComponent = lazy(() => import("./Component"));
 
 const createPdfMenubar = (windowId: string) => [
   {

@@ -1,29 +1,26 @@
-import type { SVGProps } from "react";
+import { getAppById } from "@/apps";
 import clsx from "clsx";
 import useWindowsManagerStore from "../stores/WindowsStore";
 
 const Taskbar = () => {
   const windows = useWindowsManagerStore((state) => state.windows);
-  const toggleWindow = useWindowsManagerStore((state) => state.toggleWindow);
-  const focusWindow = useWindowsManagerStore((state) => state.focusWindow);
+  const activateWindow = useWindowsManagerStore((state) => state.activateWindow);
+  const minimizeWindow = useWindowsManagerStore((state) => state.minimizeWindow);
 
-  const activeWindowId =
-    windows
-      .filter((win) => !win.isMinimized)
-      .reduce<string | null>((topId, win) => {
-        if (!topId) return win.id;
-        const currentTop = windows.find((w) => w.id === topId);
-        if (!currentTop) return win.id;
-        return win.zIndex > currentTop.zIndex ? win.id : topId;
-      }, null) ?? null;
+  const activeWindowId = windows.reduce<{ id: string; zIndex: number } | null>(
+    (top, win) =>
+      !win.isMinimized && (!top || win.zIndex > top.zIndex)
+        ? { id: win.id, zIndex: win.zIndex }
+        : top,
+    null
+  )?.id ?? null;
 
   const handleClick = (id: string, isMinimized: boolean) => {
-    if (isMinimized) {
-      toggleWindow(id);
-      focusWindow(id);
+    if (!isMinimized && id === activeWindowId) {
+      minimizeWindow(id);
       return;
     }
-    focusWindow(id);
+    activateWindow(id);
   };
 
   return (
@@ -33,7 +30,9 @@ const Taskbar = () => {
           null
         ) : (
           windows.map((win) => {
-            const Icon = win.icon as (props: SVGProps<SVGSVGElement>) => React.ReactElement;
+            const app = getAppById(win.appId);
+            if (!app) return null;
+            const Icon = app.icon;
 
             return (
               <button

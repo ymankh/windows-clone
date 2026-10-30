@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { z } from "zod";
+import { backgroundUrlSchema } from "./backgroundValidation";
 
 type CustomBackground = { id: string; name: string; url: string };
 
@@ -12,13 +14,20 @@ type PersonalizationStore = {
 };
 
 const STORAGE_KEY = "desktop-custom-backgrounds";
+const customBackgroundSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  url: backgroundUrlSchema,
+});
+const customBackgroundsSchema = z.array(customBackgroundSchema);
 
 const loadCustomBackgrounds = (): CustomBackground[] => {
   if (typeof window === "undefined") return [];
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return [];
-    return JSON.parse(stored) as CustomBackground[];
+    const parsed = customBackgroundsSchema.safeParse(JSON.parse(stored));
+    return parsed.success ? parsed.data : [];
   } catch {
     return [];
   }
@@ -40,13 +49,13 @@ const usePersonalizationStore = create<PersonalizationStore>((set, get) => ({
   setBgUrl: (value) => set({ bgUrl: value }),
   addCustomBackground: () => {
     const { bgName, bgUrl, customBackgrounds } = get();
-    const trimmedUrl = bgUrl.trim();
-    if (!trimmedUrl) return null;
+    const parsedUrl = backgroundUrlSchema.safeParse(bgUrl);
+    if (!parsedUrl.success) return null;
 
     const entry: CustomBackground = {
       id: crypto.randomUUID?.() ?? `${Date.now()}`,
       name: bgName.trim() || "Custom background",
-      url: trimmedUrl,
+      url: parsedUrl.data,
     };
 
     const next = [...customBackgrounds, entry];

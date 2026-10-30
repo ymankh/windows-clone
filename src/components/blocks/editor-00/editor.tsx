@@ -27,12 +27,14 @@ export function Editor({
   onChange,
   onSerializedChange,
   className,
+  windowId,
 }: {
   editorState?: EditorState
   editorSerializedState?: SerializedEditorState
   onChange?: (editorState: EditorState) => void
   onSerializedChange?: (editorSerializedState: SerializedEditorState) => void
   className?: string
+  windowId?: string
 }) {
   return (
     <div
@@ -51,7 +53,7 @@ export function Editor({
         }}
       >
         <TooltipProvider>
-          <Plugins />
+          <Plugins windowId={windowId} />
 
           <OnChangePlugin
             ignoreSelectionChange={true}

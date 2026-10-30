@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 export const openDesktop = async (page: Page) => {
+  page.on("pageerror", (error) => console.error(`[browser page error] ${error.message}`));
   await page.goto("/", { waitUntil: "domcontentloaded" });
 };
 

@@ -20,4 +20,20 @@ export default defineConfig({
       "shadcn-editor": path.resolve(__dirname, "./src/shadcn-editor"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react-vendor";
+          if (id.includes("@radix-ui")) return "ui-vendor";
+          if (id.includes("framer-motion") || id.includes("/motion/")) return "motion-vendor";
+          if (id.includes("zustand") || id.includes("immer") || id.includes("zod")) {
+            return "state-vendor";
+          }
+          if (id.includes("lucide-react")) return "icons-vendor";
+        },
+      },
+    },
+  },
 })

@@ -1,9 +1,11 @@
 import { Music4 } from "lucide-react";
+import { lazy } from "react";
 import type { DesktopApp } from "../types";
 import { FileTypes } from "../fileTypes";
-import MusicComponent from "./Component";
 import { MusicCommandTypes } from "./constants";
 import { audioFileDataSchema } from "./schema";
+
+const MusicComponent = lazy(() => import("./Component"));
 
 const createMusicMenubar = (windowId: string) => [
   {

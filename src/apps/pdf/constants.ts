@@ -11,3 +11,4 @@ export type PdfZoomDetail = {
   action: PdfZoomAction;
   windowId?: string;
 };
+export const PDF_FILE_URL = "/pdfs/resume.pdf";

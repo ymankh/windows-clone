@@ -1,6 +1,8 @@
 import { Terminal } from "lucide-react";
+import { lazy } from "react";
 import type { DesktopApp } from "../types";
-import TerminalComponent from "./Component";
+
+const TerminalComponent = lazy(() => import("./Component"));
 
 export const TerminalApp: DesktopApp = {
   id: "terminal",

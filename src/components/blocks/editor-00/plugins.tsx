@@ -12,13 +12,14 @@ import {
 import { NotesEditorActions, type NotesEditorCommandDetail } from "@/apps/notes/constants"
 import { ContentEditable } from "@/components/editor/editor-ui/content-editable"
 
-const WindowCommandPlugin = () => {
+const WindowCommandPlugin = ({ windowId }: { windowId?: string }) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<NotesEditorCommandDetail>).detail
       if (!detail) return
+      if (detail.windowId && detail.windowId !== windowId) return
       const action = detail.action
 
       switch (action) {
@@ -48,12 +49,12 @@ const WindowCommandPlugin = () => {
     window.addEventListener("notes-editor-command", handler as EventListener)
     return () =>
       window.removeEventListener("notes-editor-command", handler as EventListener)
-  }, [editor])
+  }, [editor, windowId])
 
   return null
 }
 
-export function Plugins() {
+export function Plugins({ windowId }: { windowId?: string }) {
   return (
     <div className="relative">
       {/* toolbar plugins */}
@@ -68,7 +69,7 @@ export function Plugins() {
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
-        <WindowCommandPlugin />
+        <WindowCommandPlugin windowId={windowId} />
         {/* editor plugins */}
       </div>
       {/* actions plugins */}

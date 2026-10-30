@@ -4,11 +4,9 @@ import { WindowLayoutModes, type WindowLayoutMode } from "@/desktop/stores/Windo
 type WindowHeaderProps = {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   title: string;
+  titleId?: string;
   layoutMode: WindowLayoutMode;
   onDragPointerDown: React.PointerEventHandler<HTMLDivElement>;
-  onDragPointerMove: React.PointerEventHandler<HTMLDivElement>;
-  onDragPointerUp: React.PointerEventHandler<HTMLDivElement>;
-  onDragPointerCancel: React.PointerEventHandler<HTMLDivElement>;
   onMinimize: React.MouseEventHandler<HTMLButtonElement>;
   onToggleMaximize: React.MouseEventHandler<HTMLButtonElement>;
   onClose: React.MouseEventHandler<HTMLButtonElement>;
@@ -17,11 +15,9 @@ type WindowHeaderProps = {
 const WindowHeader = ({
   icon: IconComponent,
   title,
+  titleId,
   layoutMode,
   onDragPointerDown,
-  onDragPointerMove,
-  onDragPointerUp,
-  onDragPointerCancel,
   onMinimize,
   onToggleMaximize,
   onClose,
@@ -29,16 +25,12 @@ const WindowHeader = ({
   <div
     className="flex cursor-move items-center justify-between bg-muted px-3 py-2 text-sm font-semibold select-none"
     onPointerDown={onDragPointerDown}
-    onPointerMove={onDragPointerMove}
-    onPointerUp={onDragPointerUp}
-    onPointerCancel={onDragPointerCancel}
-    onLostPointerCapture={onDragPointerCancel}
   >
     <span className="flex items-center gap-2 truncate">
       <span className="text-muted-foreground">
         <IconComponent className="h-4 w-4" />
       </span>
-      <span className="truncate">{title}</span>
+      <span id={titleId} className="truncate">{title}</span>
     </span>
 
     <div className="flex items-center gap-2" data-no-drag="true">

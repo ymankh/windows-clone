@@ -4,7 +4,7 @@ import { FileTypes } from "../fileTypes";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { PdfZoomActions, type PdfZoomDetail } from "./constants";
+import { PDF_FILE_URL, PdfZoomActions, type PdfZoomDetail } from "./constants";
 import { pdfFileDataSchema } from "./schema";
 
 const workerSrc = new URL(
@@ -12,8 +12,6 @@ const workerSrc = new URL(
   import.meta.url
 ).toString();
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
-
-export const PDF_FILE_URL = "/pdfs/resume.pdf";
 
 const PdfComponent = ({ windowId = "pdf", fileContext }: AppWindowComponentProps) => {
   const fileData =

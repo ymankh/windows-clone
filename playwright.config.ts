@@ -7,6 +7,7 @@ const baseURL = process.env.APP_URL ?? `http://${host}:${port}`;
 export default defineConfig({
   testDir: "./tests/playwright/specs",
   fullyParallel: false,
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: "list",

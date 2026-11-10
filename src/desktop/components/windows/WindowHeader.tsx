@@ -23,7 +23,7 @@ const WindowHeader = ({
   onClose,
 }: WindowHeaderProps) => (
   <div
-    className="flex cursor-move items-center justify-between bg-muted px-3 py-2 text-sm font-semibold select-none"
+    className="flex cursor-move touch-none items-center justify-between bg-muted px-3 py-2 text-sm font-semibold select-none"
     onPointerDown={onDragPointerDown}
   >
     <span className="flex items-center gap-2 truncate">

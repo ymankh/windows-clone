@@ -248,3 +248,11 @@ export const persistIconPosition = (
   next: IconPoint,
   excludedIds: string[] = []
 ): IconPoint => persistIconPositions({ [appId]: next }, excludedIds)[appId];
+
+/** Drops a stored icon position (used when an app is uninstalled). */
+export const forgetIconPosition = (appId: string) => {
+  const positions = readStoredIconPositions();
+  if (!(appId in positions)) return;
+  delete positions[appId];
+  writeStoredIconPositions(positions);
+};

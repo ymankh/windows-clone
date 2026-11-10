@@ -10,6 +10,7 @@ import {
   getIconDesktopBounds,
   getInitialIconPosition,
   persistIconPositions,
+  readStoredIconPositions,
   type IconPoint,
   type IconPositionsMap,
 } from "../helpers/iconPositioning";
@@ -87,7 +88,11 @@ type DesktopIconProps = {
   selectedIds?: string[];
   onSelect?: (options?: { additive?: boolean; toggle?: boolean }) => void;
   clearSelection?: () => void;
+  onHide?: () => void;
 };
+
+// A touch that travels less than this many pixels counts as a tap.
+const TOUCH_TAP_SLOP = 8;
 
 const DesktopIcon = ({
   app,
@@ -97,10 +102,10 @@ const DesktopIcon = ({
   selectedIds = [],
   onSelect,
   clearSelection,
+  onHide,
 }: DesktopIconProps) => {
   const openWindow = useWindowsManagerStore((state) => state.openWindow);
   const Icon: ComponentType<SVGProps<SVGSVGElement>> = app.icon;
-  const [hidden, setHidden] = useState(false);
   const [position, setPosition] = useState<{ x: number; y: number }>(() =>
     getInitialIconPosition(app.id, appIndex)
   );
@@ -144,6 +149,19 @@ const DesktopIcon = ({
   useEffect(() => {
     applySortedPosition();
   }, [sortedPosition]);
+
+  // Placement only avoids *stored* positions, so an icon that has never been
+  // saved (a new or newly installed app) could be dropped on by a drag. Save
+  // the initial cell as soon as the icon appears.
+  const persistInitialPosition = useEffectEvent(() => {
+    if (readStoredIconPositions()[app.id]) return;
+    const resolved = persistIconPositions({ [app.id]: positionRef.current });
+    if (resolved[app.id]) setPosition(resolved[app.id]);
+  });
+
+  useEffect(() => {
+    persistInitialPosition();
+  }, [app.id]);
 
   useEffect(() => {
     const onGroupDragStart = (event: Event) => {
@@ -208,21 +226,30 @@ const DesktopIcon = ({
     return () => window.removeEventListener("resize", handleResize);
   }, [app.id, persistPosition]);
 
-  if (hidden) return null;
+  const openApp = () => {
+    clearSelection?.();
+    openWindow(buildAppWindow(app));
+  };
 
   return (
     <DesktopIconMenu
       onOpen={() => openWindow(buildAppWindow(app))}
-      onDelete={() => setHidden(true)}
+      onDelete={() => onHide?.()}
     >
       <button
         type="button"
         className={cn(
-          "absolute flex w-24 flex-col items-center gap-2 rounded-md p-2 text-sm font-medium text-foreground/80 transition hover:bg-white/15 backdrop-blur-md",
+          "absolute flex w-24 touch-none flex-col items-center gap-2 rounded-md p-2 text-sm font-medium text-foreground/80 transition hover:bg-white/15 backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70",
           selected && "bg-white/20 ring-2 ring-primary/60"
         )}
         style={{ left: position.x, top: position.y }}
         data-desktop-icon-id={app.id}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          // Enter opens the app; without this it would only select the icon.
+          event.preventDefault();
+          openApp();
+        }}
         onPointerDown={(event) => {
           if (event.button !== 0) return;
           event.stopPropagation();
@@ -300,6 +327,13 @@ const DesktopIcon = ({
             setPosition(snapped[app.id]);
           }
           event.currentTarget.releasePointerCapture(event.pointerId);
+          // Touch has no double-click, so a tap opens the app directly.
+          if (
+            event.pointerType === "touch" &&
+            Math.hypot(deltaX, deltaY) < TOUCH_TAP_SLOP
+          ) {
+            openApp();
+          }
         }}
         onClick={(event) => {
           event.stopPropagation();
@@ -312,8 +346,7 @@ const DesktopIcon = ({
         }}
         onDoubleClick={(event) => {
           event.stopPropagation();
-          clearSelection?.();
-          openWindow(buildAppWindow(app));
+          openApp();
         }}
       >
         <div className="flex h-16 w-16 items-center justify-center rounded-md bg-white/5 shadow-sm">

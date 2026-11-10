@@ -25,7 +25,7 @@ const DesktopIconMenu = ({ onOpen, onDelete, children }: DesktopIconMenuProps) =
           variant={MenuItemVariants.destructive}
           onSelect={onDelete}
         >
-          Delete
+          Remove from desktop
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

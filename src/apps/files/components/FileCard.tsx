@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import { FileIcon } from "./FileIcon";
 import { FileContextMenu } from "./FileContextMenu";
@@ -11,6 +12,7 @@ type FileCardProps = {
   onOpen: () => void;
   openWithOptions: OpenWithOption[];
   onOpenWith: (appId: string) => void;
+  onSetDefault: (appId: string) => void;
 };
 
 export const FileCard = ({
@@ -21,12 +23,21 @@ export const FileCard = ({
   onOpen,
   openWithOptions,
   onOpenWith,
-}: FileCardProps) => (
+  onSetDefault,
+}: FileCardProps) => {
+  const lastPointerType = useRef("mouse");
+  const open = () => {
+    if (item.type === "folder") onOpenFolder();
+    else onOpen();
+  };
+
+  return (
   <FileContextMenu
     item={item}
     openWithOptions={openWithOptions}
     onOpen={onOpen}
     onOpenWith={onOpenWith}
+    onSetDefault={onSetDefault}
   >
     <button
       type="button"
@@ -34,10 +45,21 @@ export const FileCard = ({
         "group flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-card/60 p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-border hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
         selected && "border-primary bg-primary/10 ring-2 ring-primary/40"
       )}
-      onClick={onSelect}
-      onDoubleClick={() => {
-        if (item.type === "folder") onOpenFolder();
-        else onOpen();
+      onPointerDown={(event) => {
+        lastPointerType.current = event.pointerType;
+      }}
+      onClick={() => {
+        onSelect();
+        // Touch has no double-click, so a tap opens the item directly.
+        if (lastPointerType.current === "touch") open();
+      }}
+      onDoubleClick={open}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter") return;
+        // Enter opens the item; without this it would only select it.
+        event.preventDefault();
+        onSelect();
+        open();
       }}
     >
       <FileIcon item={item} />
@@ -49,4 +71,5 @@ export const FileCard = ({
       </div>
     </button>
   </FileContextMenu>
-);
+  );
+};

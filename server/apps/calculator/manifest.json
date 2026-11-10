@@ -1,0 +1,9 @@
+{
+  "id": "calculator",
+  "name": "Calculator",
+  "version": "1.0.0",
+  "author": "Desktop Store",
+  "description": "A simple calculator with keyboard support and a running history.",
+  "category": "Utilities",
+  "minSize": { "width": 300, "height": 440 }
+}

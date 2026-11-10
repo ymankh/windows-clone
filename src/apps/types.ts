@@ -26,4 +26,7 @@ export type DesktopApp = {
   createMenubar?: (windowId: string) => WindowMenu[];
   fileCapabilities?: AppFileCapability[];
   menubar?: WindowMenu[];
+  /** "store" for apps installed from the App Store. Built-in apps omit it. */
+  source?: "builtin" | "store";
+  version?: string;
 };

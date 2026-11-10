@@ -61,9 +61,10 @@ export const getRenderedDockSplit = (
     target === "left"
       ? WindowLayoutModes.dockedRight
       : WindowLayoutModes.dockedLeft;
+  // Minimized windows stay mounted (hidden) and must not count as dock partners.
   const oppositeWindow = Array.from(
     document.querySelectorAll<HTMLElement>(
-      `[data-window-layout-mode="${oppositeLayout}"]`
+      `[data-window-layout-mode="${oppositeLayout}"]:not([data-window-minimized="true"])`
     )
   ).find((element) => element.dataset.windowId !== currentWindowId);
 

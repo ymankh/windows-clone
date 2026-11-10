@@ -18,6 +18,7 @@ const FilesComponent = () => {
     selectedFolderId,
     selectedItem,
     selectItem,
+    setDefaultApp,
   } = useFileNavigation();
 
   return (
@@ -44,6 +45,7 @@ const FilesComponent = () => {
               onOpen={openItem}
               resolveOpenWith={resolveOpenWithOptions}
               onOpenWith={openWith}
+              onSetDefault={setDefaultApp}
             />
           </div>
         </div>

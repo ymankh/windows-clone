@@ -19,7 +19,8 @@ const readIconPositions = (page: Page) =>
 
 const expectIconsInsideDesktop = async (page: Page) => {
   const icons = desktopIcons(page);
-  await expect(icons).toHaveCount(7);
+  // Seven built-in apps plus the App Store.
+  await expect(icons).toHaveCount(8);
   const [boxes, taskbarBox] = await Promise.all([
     icons.evaluateAll((elements) =>
       elements.map((element) => {

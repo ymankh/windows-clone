@@ -61,6 +61,11 @@ const PdfComponent = ({ windowId = "pdf", fileContext }: AppWindowComponentProps
       <Document
         file={fileUrl}
         loading={<div className="p-4">Loading PDF...</div>}
+        error={
+          <div role="alert" className="p-4 text-sm text-destructive">
+            This PDF could not be loaded.
+          </div>
+        }
         onLoadSuccess={({ numPages }) => setNumPages(numPages)}
       >
         <div className="flex w-full flex-col items-center gap-6 py-4">

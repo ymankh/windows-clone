@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  ExternalLink,
   Globe,
   Home,
   RefreshCcw,
@@ -26,12 +27,27 @@ const QUICK_LINKS = [
 
 const HOME_URL = QUICK_LINKS[0].url;
 
+const BASE_SANDBOX = "allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts";
 
 const normalizeUrl = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return HOME_URL;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+};
+
+// A framed page that shares this app's origin could remove its own sandbox if
+// it were given both scripts and same-origin access, so only cross-origin
+// pages get `allow-same-origin`.
+const getSandbox = (url: string) => {
+  try {
+    if (new URL(url, window.location.href).origin === window.location.origin) {
+      return BASE_SANDBOX;
+    }
+  } catch {
+    return BASE_SANDBOX;
+  }
+  return `${BASE_SANDBOX} allow-same-origin`;
 };
 
 const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => {
@@ -41,63 +57,44 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
   const [iframeKey, setIframeKey] = useState(0);
 
   const currentUrl = history[historyIndex] ?? HOME_URL;
+  const canGoBack = historyIndex > 0;
+  const canGoForward = historyIndex < history.length - 1;
 
-  useEffect(() => {
-    const handleCommand = (event: Event) => {
-      const detail = (
-        event as CustomEvent<BrowserCommandDetail>
-      ).detail;
-      if (!detail) return;
-      if (detail.windowId && detail.windowId !== windowId) return;
-
-      if (detail.type === BrowserCommandTypes.back) {
-          setHistoryIndex((value) => {
-            const nextIndex = Math.max(0, value - 1);
-            setAddress(history[nextIndex] ?? HOME_URL);
-            return nextIndex;
-          });
-        }
-
-      if (detail.type === BrowserCommandTypes.forward) {
-          setHistoryIndex((value) => {
-            const nextIndex = Math.min(history.length - 1, value + 1);
-            setAddress(history[nextIndex] ?? HOME_URL);
-            return nextIndex;
-          });
-        }
-
-        if (detail.type === BrowserCommandTypes.reload) {
-          setIframeKey((value) => value + 1);
-        }
-
-      if (detail.type === BrowserCommandTypes.home) {
-        const nextHistory = history.slice(0, historyIndex + 1);
-        nextHistory.push(HOME_URL);
-        setHistory(nextHistory);
-        setHistoryIndex(nextHistory.length - 1);
-        setAddress(HOME_URL);
-      }
-    };
-
-    window.addEventListener("browser-command", handleCommand as EventListener);
-    return () => {
-      window.removeEventListener("browser-command", handleCommand as EventListener);
-    };
-  }, [history, historyIndex, windowId]);
+  const goToIndex = (index: number) => {
+    const nextIndex = Math.min(history.length - 1, Math.max(0, index));
+    setHistoryIndex(nextIndex);
+    setAddress(history[nextIndex] ?? HOME_URL);
+  };
 
   const navigateTo = (target: string) => {
     const nextUrl = normalizeUrl(target);
-    const nextHistory = history.slice(0, historyIndex + 1);
-    nextHistory.push(nextUrl);
+    const nextHistory = [...history.slice(0, historyIndex + 1), nextUrl];
     setHistory(nextHistory);
     setHistoryIndex(nextHistory.length - 1);
     setAddress(nextUrl);
   };
 
-  const canGoBack = historyIndex > 0;
-  const canGoForward = historyIndex < history.length - 1;
+  const goBack = () => goToIndex(historyIndex - 1);
+  const goForward = () => goToIndex(historyIndex + 1);
+  const reload = () => setIframeKey((value) => value + 1);
+  const goHome = () => navigateTo(HOME_URL);
 
-  const quickLinks = useMemo(() => QUICK_LINKS, []);
+  // Menubar commands share the toolbar's handlers instead of duplicating them.
+  const handleCommand = useEffectEvent((detail: BrowserCommandDetail | undefined) => {
+    if (!detail) return;
+    if (detail.windowId && detail.windowId !== windowId) return;
+    if (detail.type === BrowserCommandTypes.back) goBack();
+    if (detail.type === BrowserCommandTypes.forward) goForward();
+    if (detail.type === BrowserCommandTypes.reload) reload();
+    if (detail.type === BrowserCommandTypes.home) goHome();
+  });
+
+  useEffect(() => {
+    const listener = (event: Event) =>
+      handleCommand((event as CustomEvent<BrowserCommandDetail>).detail);
+    window.addEventListener("browser-command", listener);
+    return () => window.removeEventListener("browser-command", listener);
+  }, []);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
@@ -109,11 +106,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
             size="icon"
             disabled={!canGoBack}
             aria-label="Back"
-            onClick={() => {
-              const nextIndex = Math.max(0, historyIndex - 1);
-              setHistoryIndex(nextIndex);
-              setAddress(history[nextIndex] ?? HOME_URL);
-            }}
+            onClick={goBack}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -123,11 +116,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
             size="icon"
             disabled={!canGoForward}
             aria-label="Forward"
-            onClick={() => {
-              const nextIndex = Math.min(history.length - 1, historyIndex + 1);
-              setHistoryIndex(nextIndex);
-              setAddress(history[nextIndex] ?? HOME_URL);
-            }}
+            onClick={goForward}
           >
             <ArrowRight className="h-4 w-4" />
           </Button>
@@ -136,7 +125,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
             variant="secondary"
             size="icon"
             aria-label="Reload"
-            onClick={() => setIframeKey((value) => value + 1)}
+            onClick={reload}
           >
             <RefreshCcw className="h-4 w-4" />
           </Button>
@@ -145,7 +134,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
             variant="secondary"
             size="icon"
             aria-label="Home"
-            onClick={() => navigateTo(HOME_URL)}
+            onClick={goHome}
           >
             <Home className="h-4 w-4" />
           </Button>
@@ -164,6 +153,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
                 onChange={(event) => setAddress(event.target.value)}
                 className="h-10 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
                 placeholder="Enter a URL"
+                aria-label="Address"
               />
             </div>
             <Button type="submit">
@@ -172,8 +162,8 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
           </form>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          {quickLinks.map((link) => (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {QUICK_LINKS.map((link) => (
             <Button
               key={link.url}
               type="button"
@@ -184,6 +174,17 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
               {link.label}
             </Button>
           ))}
+          {/* Many sites refuse to load inside a frame, and a page cannot detect
+              that from the outside, so always offer a way out. */}
+          <a
+            href={currentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Blank page? Open in a new tab
+          </a>
         </div>
       </div>
 
@@ -193,7 +194,7 @@ const BrowserComponent = ({ windowId = "browser" }: AppWindowComponentProps) => 
           src={currentUrl}
           title="Browser preview"
           className="h-full w-full border-0 bg-white"
-          sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+          sandbox={getSandbox(currentUrl)}
           referrerPolicy="strict-origin-when-cross-origin"
         />
       </div>

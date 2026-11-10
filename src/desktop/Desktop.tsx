@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { PersonalizationApp, type DesktopApp } from "../apps";
+import { useShallow } from "zustand/react/shallow";
+import { PersonalizationApp, useDesktopApps } from "../apps";
 import { buildAppWindow } from "../apps/windowBuilder";
 import DesktopIcon from "./components/DesktopIcon";
 import Window from "./components/windows/Window";
@@ -7,6 +8,7 @@ import Taskbar from "./components/Taskbar";
 import useWindowsManagerStore from "./stores/WindowsStore";
 import DesktopContextMenu from "./components/DesktopContextMenu";
 import useThemeStore from "./modules/personalization/store/ThemeStore";
+import { useHiddenIconsStore } from "./helpers/hiddenIcons";
 import {
   collectIntersectedIconIds,
   createSelectionRect,
@@ -22,13 +24,20 @@ import {
   type IconPositionsMap,
 } from "./helpers/iconPositioning";
 
-type DesktopProps = {
-  apps: DesktopApp[];
-};
-
-const Desktop = ({ apps }: DesktopProps) => {
-  const windows = useWindowsManagerStore((state) => state.windows);
+const Desktop = () => {
+  // Built-in apps plus anything installed from the App Store.
+  const apps = useDesktopApps();
+  // Only the list of ids: the desktop must not re-render on every drag frame.
+  const windowIds = useWindowsManagerStore(
+    useShallow((state) => state.windows.map((win) => win.id))
+  );
   const openWindow = useWindowsManagerStore((state) => state.openWindow);
+  const clampWindowsToViewport = useWindowsManagerStore(
+    (state) => state.clampWindowsToViewport
+  );
+  const hiddenIconIds = useHiddenIconsStore((state) => state.hiddenIds);
+  const hideIconInStore = useHiddenIconsStore((state) => state.hide);
+  const restoreHiddenIcons = useHiddenIconsStore((state) => state.restoreAll);
   const [sortedIconPositions, setSortedIconPositions] = useState<IconPositionsMap>({});
   const [selectedIconIds, setSelectedIconIds] = useState<string[]>([]);
   const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(null);
@@ -46,6 +55,16 @@ const Desktop = ({ apps }: DesktopProps) => {
   useEffect(() => {
     applyTheme();
   }, [applyTheme]);
+
+  useEffect(() => {
+    window.addEventListener("resize", clampWindowsToViewport);
+    return () => window.removeEventListener("resize", clampWindowsToViewport);
+  }, [clampWindowsToViewport]);
+
+  const hideIcon = (appId: string) => {
+    hideIconInStore(appId);
+    setSelectedIconIds((prev) => prev.filter((selectedId) => selectedId !== appId));
+  };
 
   const openPersonalization = () =>
     openWindow(
@@ -83,6 +102,8 @@ const Desktop = ({ apps }: DesktopProps) => {
       <DesktopContextMenu
         onSort={sortIcons}
         onOpenPersonalization={openPersonalization}
+        hiddenIconCount={hiddenIconIds.length}
+        onRestoreIcons={restoreHiddenIcons}
       >
         <div
           className="flex min-h-screen w-full flex-wrap gap-6 p-6"
@@ -155,7 +176,8 @@ const Desktop = ({ apps }: DesktopProps) => {
             setSelectedIconIds([]);
           }}
         >
-          {apps.map((app, appIndex) => (
+          {apps.map((app, appIndex) =>
+            hiddenIconIds.includes(app.id) ? null : (
             <DesktopIcon
               key={app.id}
               app={app}
@@ -172,8 +194,10 @@ const Desktop = ({ apps }: DesktopProps) => {
                 })
               }
               clearSelection={() => setSelectedIconIds([])}
+              onHide={() => hideIcon(app.id)}
             />
-          ))}
+            )
+          )}
           {selectionRect && (
             <div
               className="pointer-events-none absolute z-50 border border-primary/70 bg-primary/20"
@@ -183,8 +207,8 @@ const Desktop = ({ apps }: DesktopProps) => {
         </div>
       </DesktopContextMenu>
 
-      {windows.map((win) => (
-        <Window key={win.id} id={win.id} />
+      {windowIds.map((windowId) => (
+        <Window key={windowId} id={windowId} />
       ))}
 
       <Taskbar />

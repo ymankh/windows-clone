@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Calculator</title>
+    <!-- desktop-sdk -->
+    <style>
+      :root { --bg: #f8fafc; --key: #ffffff; --text: #0f172a; --muted: #64748b; --border: #e2e8f0; --op: #e0e7ff; --eq: #4338ca; }
+      [data-theme="dark"] { --bg: #0f172a; --key: #1e293b; --text: #e2e8f0; --muted: #94a3b8; --border: #334155; --op: #312e81; --eq: #6366f1; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .display { text-align: right; padding: 8px 4px; }
+      .expression { min-height: 20px; color: var(--muted); font-size: 13px; }
+      .value { font-size: 36px; font-weight: 600; overflow-wrap: anywhere; }
+      .keys { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+      button {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--key);
+        color: var(--text);
+        font: inherit;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      button:hover { filter: brightness(0.96); }
+      button:focus-visible { outline: 2px solid var(--eq); outline-offset: 1px; }
+      button.op { background: var(--op); }
+      button.eq { background: var(--eq); color: #fff; border-color: transparent; }
+      button.wide { grid-column: span 2; }
+    </style>
+  </head>
+  <body>
+    <div class="display" aria-live="polite">
+      <div class="expression" id="expression"></div>
+      <div class="value" id="value">0</div>
+    </div>
+    <div class="keys">
+      <button type="button" data-action="clear" class="op">C</button>
+      <button type="button" data-action="sign" class="op">±</button>
+      <button type="button" data-action="percent" class="op">%</button>
+      <button type="button" data-op="/" class="op" aria-label="Divide">÷</button>
+      <button type="button" data-digit="7">7</button>
+      <button type="button" data-digit="8">8</button>
+      <button type="button" data-digit="9">9</button>
+      <button type="button" data-op="*" class="op" aria-label="Multiply">×</button>
+      <button type="button" data-digit="4">4</button>
+      <button type="button" data-digit="5">5</button>
+      <button type="button" data-digit="6">6</button>
+      <button type="button" data-op="-" class="op" aria-label="Subtract">−</button>
+      <button type="button" data-digit="1">1</button>
+      <button type="button" data-digit="2">2</button>
+      <button type="button" data-digit="3">3</button>
+      <button type="button" data-op="+" class="op" aria-label="Add">+</button>
+      <button type="button" data-digit="0" class="wide">0</button>
+      <button type="button" data-action="dot">.</button>
+      <button type="button" data-action="equals" class="eq" aria-label="Equals">=</button>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var SYMBOLS = { "+": "+", "-": "−", "*": "×", "/": "÷" };
+        var valueEl = document.getElementById("value");
+        var expressionEl = document.getElementById("expression");
+        var current = "0";
+        var stored = null;
+        var operator = null;
+        var fresh = true;
+
+        function format(number) {
+          if (!isFinite(number)) return "Error";
+          var rounded = Math.round(number * 1e10) / 1e10;
+          return String(rounded);
+        }
+
+        function compute(a, b, op) {
+          switch (op) {
+            case "+": return a + b;
+            case "-": return a - b;
+            case "*": return a * b;
+            case "/": return b === 0 ? NaN : a / b;
+          }
+          return b;
+        }
+
+        function render() {
+          valueEl.textContent = current;
+          expressionEl.textContent = operator ? format(stored) + " " + SYMBOLS[operator] : "";
+        }
+
+        function inputDigit(digit) {
+          if (current === "Error" || fresh) {
+            current = digit;
+            fresh = false;
+          } else if (current.replace("-", "").length < 15) {
+            current = current === "0" ? digit : current + digit;
+          }
+        }
+
+        function inputDot() {
+          if (current === "Error" || fresh) {
+            current = "0.";
+            fresh = false;
+          } else if (current.indexOf(".") === -1) {
+            current += ".";
+          }
+        }
+
+        function chooseOperator(op) {
+          if (current === "Error") return;
+          if (operator && !fresh) {
+            current = format(compute(stored, parseFloat(current), operator));
+          }
+          stored = parseFloat(current);
+          operator = op;
+          fresh = true;
+        }
+
+        function equals() {
+          if (!operator || current === "Error") return;
+          current = format(compute(stored, parseFloat(current), operator));
+          stored = null;
+          operator = null;
+          fresh = true;
+        }
+
+        function handle(key) {
+          if (/^\d$/.test(key)) inputDigit(key);
+          else if (key === ".") inputDot();
+          else if (SYMBOLS[key]) chooseOperator(key);
+          else if (key === "=" || key === "Enter") equals();
+          else if (key === "Escape" || key === "c" || key === "C") {
+            current = "0"; stored = null; operator = null; fresh = true;
+          } else if (key === "Backspace") {
+            if (!fresh && current !== "Error") current = current.length > 1 ? current.slice(0, -1) : "0";
+          } else if (key === "sign") {
+            if (current !== "0" && current !== "Error") current = current[0] === "-" ? current.slice(1) : "-" + current;
+          } else if (key === "%") {
+            if (current !== "Error") current = format(parseFloat(current) / 100);
+          } else {
+            return false;
+          }
+          render();
+          return true;
+        }
+
+        document.querySelector(".keys").addEventListener("click", function (event) {
+          var button = event.target.closest("button");
+          if (!button) return;
+          var data = button.dataset;
+          if (data.digit) handle(data.digit);
+          else if (data.op) handle(data.op);
+          else if (data.action === "dot") handle(".");
+          else if (data.action === "equals") handle("=");
+          else if (data.action === "clear") handle("Escape");
+          else if (data.action === "sign") handle("sign");
+          else if (data.action === "percent") handle("%");
+        });
+
+        document.addEventListener("keydown", function (event) {
+          if (event.ctrlKey || event.metaKey || event.altKey) return;
+          if (handle(event.key)) event.preventDefault();
+        });
+
+        render();
+      })();
+    </script>
+  </body>
+</html>

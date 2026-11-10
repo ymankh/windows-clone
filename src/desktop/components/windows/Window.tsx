@@ -6,6 +6,7 @@ import useWindowsManagerStore, {
   WindowLayoutModes,
 } from "../../stores/WindowsStore";
 import WindowDockPreview from "./WindowDockPreview";
+import WindowErrorBoundary from "./WindowErrorBoundary";
 import WindowHeader from "./WindowHeader";
 import WindowMenubar from "./WindowMenubar";
 import WindowResizeHandles from "./WindowResizeHandles";
@@ -14,6 +15,26 @@ import { useWindowInteractions } from "./windowing/useWindowInteractions";
 import type { WindowProps } from "./windowing/types";
 import { getDesktopBounds } from "./windowing/utils";
 
+const VISIBLE_STATE = { opacity: 1, scale: 1, y: 0 };
+const MINIMIZED_STATE = { opacity: 0, scale: 0.75, y: 40 };
+
+// After a window closes, hand keyboard focus to the window now on top.
+const focusTopWindow = () => {
+  const top = useWindowsManagerStore
+    .getState()
+    .windows.filter((entry) => !entry.isMinimized)
+    .reduce<{ id: string; zIndex: number } | null>(
+      (current, entry) => (!current || entry.zIndex > current.zIndex ? entry : current),
+      null
+    );
+  if (!top) return;
+  requestAnimationFrame(() => {
+    document
+      .querySelector<HTMLElement>(`[data-window-id="${CSS.escape(top.id)}"]`)
+      ?.focus();
+  });
+};
+
 const Window = ({ id }: WindowProps) => {
   const windowData = useWindowsManagerStore((state) =>
     state.windows.find((win) => win.id === id)
@@ -21,8 +42,17 @@ const Window = ({ id }: WindowProps) => {
   const closeWindow = useWindowsManagerStore((state) => state.closeWindow);
   const minimizeWindow = useWindowsManagerStore((state) => state.minimizeWindow);
   const activateWindow = useWindowsManagerStore((state) => state.activateWindow);
-  const windows = useWindowsManagerStore((state) => state.windows);
   const [isClosing, setIsClosing] = useState(false);
+  const isMinimized = windowData?.isMinimized ?? false;
+  // A minimized window stays mounted so its app keeps its state (and audio
+  // keeps playing); it is only taken out of layout once the animation ends.
+  const [minimizeSettled, setMinimizeSettled] = useState(false);
+  const [previousMinimized, setPreviousMinimized] = useState(isMinimized);
+  if (previousMinimized !== isMinimized) {
+    setPreviousMinimized(isMinimized);
+    setMinimizeSettled(false);
+  }
+  const isHidden = isMinimized && minimizeSettled;
   const titleId = useId();
   const instructionsId = useId();
   const windowRef = useRef<HTMLDivElement | null>(null);
@@ -108,7 +138,7 @@ const Window = ({ id }: WindowProps) => {
 
   return (
     <>
-      {!isClosing && !windowData.isMinimized ? (
+      {!isClosing && !isMinimized ? (
         <>
           <WindowDockPreview windowId={id} dockPreview={dockPreview} />
           {isResizing ? (
@@ -118,7 +148,6 @@ const Window = ({ id }: WindowProps) => {
           ) : null}
           <WindowSplitDivider
             windowData={windowData}
-            windows={windows}
             onPointerDown={startSplitResize}
           />
         </>
@@ -126,27 +155,27 @@ const Window = ({ id }: WindowProps) => {
       <AnimatePresence
         mode="wait"
         onExitComplete={() => {
-          if (isClosing) closeWindow(id);
+          if (!isClosing) return;
+          closeWindow(id);
+          focusTopWindow();
         }}
       >
-        {!isClosing && !windowData.isMinimized ? (
+        {!isClosing ? (
           <motion.div
             ref={windowRef}
             key={id}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              y: 0,
-            }}
-            exit={{ opacity: 0, scale: 0.75, y: 40 }}
+            animate={isMinimized ? MINIMIZED_STATE : VISIBLE_STATE}
+            exit={MINIMIZED_STATE}
             transition={{
               duration: reduceMotion ? 0 : 0.18,
               ease: [0.22, 0.8, 0.36, 1],
             }}
+            onAnimationComplete={() => setMinimizeSettled(isMinimized)}
             className="absolute flex flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
             data-window-id={id}
             data-window-layout-mode={layoutMode}
+            data-window-minimized={isMinimized}
             role="dialog"
             aria-modal="false"
             aria-labelledby={titleId}
@@ -158,6 +187,8 @@ const Window = ({ id }: WindowProps) => {
               top: animatedTop,
               width: animatedWidth,
               height: animatedHeight,
+              display: isHidden ? "none" : "flex",
+              pointerEvents: isMinimized ? "none" : undefined,
             }}
             onPointerDown={() => activateWindow(id)}
             onKeyDown={(event) => {
@@ -232,15 +263,17 @@ const Window = ({ id }: WindowProps) => {
             {menubar ? <WindowMenubar menu={menubar} /> : null}
 
             <div className="flex-1 min-h-0 overflow-hidden">
-              <Suspense
-                fallback={
-                  <div role="status" className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    Loading {windowData.title}…
-                  </div>
-                }
-              >
-                <ContentComponent windowId={id} fileContext={windowData.fileContext} />
-              </Suspense>
+              <WindowErrorBoundary title={windowData.title}>
+                <Suspense
+                  fallback={
+                    <div role="status" className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      Loading {windowData.title}…
+                    </div>
+                  }
+                >
+                  <ContentComponent windowId={id} fileContext={windowData.fileContext} />
+                </Suspense>
+              </WindowErrorBoundary>
             </div>
             <WindowResizeHandles
               startResize={startResize}

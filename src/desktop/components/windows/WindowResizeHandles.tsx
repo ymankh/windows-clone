@@ -16,7 +16,7 @@ type WindowResizeHandlesProps = {
 const WindowResizeHandles = ({
   startResize,
 }: WindowResizeHandlesProps) => (
-  <div className="pointer-events-none absolute inset-0">
+  <div className="pointer-events-none absolute inset-0 touch-none">
     <div
       className="pointer-events-auto absolute inset-y-3 left-0 w-2 cursor-ew-resize"
       onPointerDown={startResize(ResizeHorizontalEdges.left, null)}

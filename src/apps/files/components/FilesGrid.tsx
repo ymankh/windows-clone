@@ -9,6 +9,7 @@ type FilesGridProps = {
   onOpen: (item: FolderItem) => void;
   resolveOpenWith: (item: FolderItem) => OpenWithOption[];
   onOpenWith: (item: FolderItem, appId: string) => void;
+  onSetDefault: (item: FolderItem, appId: string) => void;
 };
 
 export const FilesGrid = ({
@@ -19,6 +20,7 @@ export const FilesGrid = ({
   onOpen,
   resolveOpenWith,
   onOpenWith,
+  onSetDefault,
 }: FilesGridProps) => {
   if (!items.length) {
     return <div className="text-sm text-muted-foreground">This folder is empty.</div>;
@@ -36,6 +38,7 @@ export const FilesGrid = ({
           onOpen={() => onOpen(item)}
           openWithOptions={resolveOpenWith(item)}
           onOpenWith={(appId) => onOpenWith(item, appId)}
+          onSetDefault={(appId) => onSetDefault(item, appId)}
         />
       ))}
     </div>

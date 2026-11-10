@@ -308,6 +308,38 @@ export const testRegistry: TestDefinition[] = [
     status: "planned",
     details: "Verify custom background inputs add and select a new wallpaper option.",
   },
+  {
+    id: "store.install",
+    feature: "App Store",
+    title: "Install and run an app from the store",
+    status: "implemented",
+    spec: "tests/playwright/specs/store.spec.ts",
+    details: "Install Markdown Pad, run it, and verify it survives a reload with the store offline.",
+  },
+  {
+    id: "store.open-with",
+    feature: "App Store",
+    title: "Open files with installed apps and change the default",
+    status: "implemented",
+    spec: "tests/playwright/specs/store.spec.ts",
+    details: "Open Notes.md via Open with, then make Markdown Pad the default for .md files.",
+  },
+  {
+    id: "store.uninstall",
+    feature: "App Store",
+    title: "Uninstall an app",
+    status: "implemented",
+    spec: "tests/playwright/specs/store.spec.ts",
+    details: "Verify uninstalling removes the icon and file default and falls back to Notes.",
+  },
+  {
+    id: "store.offline",
+    feature: "App Store",
+    title: "Explain an unreachable store server",
+    status: "implemented",
+    spec: "tests/playwright/specs/store.spec.ts",
+    details: "Verify the store shows how to start the server when it cannot connect.",
+  },
 ];
 
 export const getImplementedTests = () =>

@@ -2,6 +2,9 @@ name: Pull request checks
 
 on:
   pull_request:
+  push:
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:
@@ -33,6 +36,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
 
       - name: Build
         run: npm run build

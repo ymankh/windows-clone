@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Markdown Pad</title>
+    <!-- desktop-sdk -->
+    <style>
+      :root {
+        --bg: #ffffff;
+        --panel: #f8fafc;
+        --text: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --accent: #0f766e;
+        --code: #f1f5f9;
+      }
+      [data-theme="dark"] {
+        --bg: #0f172a;
+        --panel: #111c33;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --border: #1e293b;
+        --accent: #2dd4bf;
+        --code: #1e293b;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        background: var(--panel);
+      }
+      header .name { font-weight: 600; }
+      header .status { margin-left: auto; color: var(--muted); font-size: 12px; }
+      button {
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 4px 10px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover { border-color: var(--accent); }
+      button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+      main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; }
+      main.editor-only { grid-template-columns: 1fr; }
+      main.editor-only #preview { display: none; }
+      textarea {
+        width: 100%;
+        height: 100%;
+        resize: none;
+        border: 0;
+        border-right: 1px solid var(--border);
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.6 ui-monospace, "Cascadia Code", Consolas, monospace;
+        outline: none;
+      }
+      #preview { overflow: auto; padding: 16px 20px; }
+      #preview h1, #preview h2, #preview h3 { line-height: 1.25; margin: 0.8em 0 0.4em; }
+      #preview h1:first-child, #preview h2:first-child, #preview h3:first-child { margin-top: 0; }
+      #preview p { margin: 0 0 0.8em; }
+      #preview code { background: var(--code); border-radius: 4px; padding: 1px 5px; font-family: ui-monospace, Consolas, monospace; }
+      #preview pre { background: var(--code); border-radius: 6px; padding: 10px 12px; overflow: auto; }
+      #preview pre code { background: none; padding: 0; }
+      #preview blockquote { margin: 0 0 0.8em; padding-left: 12px; border-left: 3px solid var(--accent); color: var(--muted); }
+      #preview .link { color: var(--accent); text-decoration: underline; }
+      #preview hr { border: 0; border-top: 1px solid var(--border); }
+      .empty { color: var(--muted); font-style: italic; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="name" id="file-name">Untitled.md</span>
+      <button type="button" id="toggle-preview" aria-pressed="true">Preview</button>
+      <button type="button" id="save">Save as .md</button>
+      <span class="status" id="status" aria-live="polite"></span>
+    </header>
+    <main id="layout">
+      <textarea id="editor" aria-label="Markdown source" spellcheck="true" placeholder="Start writing Markdown…"></textarea>
+      <article id="preview" aria-label="Preview"></article>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var editor = document.getElementById("editor");
+        var preview = document.getElementById("preview");
+        var layout = document.getElementById("layout");
+        var statusEl = document.getElementById("status");
+        var fileNameEl = document.getElementById("file-name");
+        var toggleButton = document.getElementById("toggle-preview");
+        var fileName = "Untitled.md";
+        var saveTimer = null;
+
+        function escapeHtml(text) {
+          return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        }
+
+        // Inline formatting. Input is escaped first, so the preview can never
+        // contain markup the user did not type as Markdown.
+        function inline(text) {
+          return escapeHtml(text)
+            .replace(/`([^`]+)`/g, "<code>$1</code>")
+            .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+            .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
+            .replace(/~~([^~]+)~~/g, "<del>$1</del>")
+            .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<span class="link" title="$2">$1</span>');
+        }
+
+        function render(markdown) {
+          var lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+          var html = [];
+          var paragraph = [];
+          var list = null;
+          var inCode = false;
+          var code = [];
+
+          function flushParagraph() {
+            if (paragraph.length) html.push("<p>" + inline(paragraph.join(" ")) + "</p>");
+            paragraph = [];
+          }
+          function flushList() {
+            if (list) html.push("<" + list.tag + ">" + list.items.join("") + "</" + list.tag + ">");
+            list = null;
+          }
+
+          lines.forEach(function (line) {
+            if (/^```/.test(line)) {
+              if (inCode) {
+                html.push("<pre><code>" + escapeHtml(code.join("\n")) + "</code></pre>");
+                code = [];
+              } else {
+                flushParagraph();
+                flushList();
+              }
+              inCode = !inCode;
+              return;
+            }
+            if (inCode) {
+              code.push(line);
+              return;
+            }
+
+            var heading = /^(#{1,6})\s+(.*)$/.exec(line);
+            var bullet = /^\s*[-*+]\s+(.*)$/.exec(line);
+            var ordered = /^\s*\d+[.)]\s+(.*)$/.exec(line);
+
+            if (!line.trim()) {
+              flushParagraph();
+              flushList();
+            } else if (heading) {
+              flushParagraph();
+              flushList();
+              var level = heading[1].length;
+              html.push("<h" + level + ">" + inline(heading[2]) + "</h" + level + ">");
+            } else if (/^\s*(-{3,}|\*{3,})\s*$/.test(line)) {
+              flushParagraph();
+              flushList();
+              html.push("<hr />");
+            } else if (/^>\s?/.test(line)) {
+              flushParagraph();
+              flushList();
+              html.push("<blockquote>" + inline(line.replace(/^>\s?/, "")) + "</blockquote>");
+            } else if (bullet || ordered) {
+              flushParagraph();
+              var tag = bullet ? "ul" : "ol";
+              if (!list || list.tag !== tag) {
+                flushList();
+                list = { tag: tag, items: [] };
+              }
+              list.items.push("<li>" + inline((bullet || ordered)[1]) + "</li>");
+            } else {
+              flushList();
+              paragraph.push(line.trim());
+            }
+          });
+
+          if (inCode) html.push("<pre><code>" + escapeHtml(code.join("\n")) + "</code></pre>");
+          flushParagraph();
+          flushList();
+          return html.join("\n");
+        }
+
+        function update() {
+          var text = editor.value;
+          preview.innerHTML = text.trim() ? render(text) : '<p class="empty">Nothing to preview yet.</p>';
+          var words = text.trim() ? text.trim().split(/\s+/).length : 0;
+          statusEl.textContent = words + (words === 1 ? " word" : " words");
+        }
+
+        function scheduleSave() {
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(flushSave, 300);
+        }
+
+        function flushSave() {
+          if (saveTimer === null) return;
+          clearTimeout(saveTimer);
+          saveTimer = null;
+          desktop.saveState({ text: editor.value });
+        }
+
+        // Clicking anywhere outside the app (title bar, close button, another
+        // window) blurs the frame, so pending edits are saved before it closes.
+        window.addEventListener("blur", flushSave);
+        window.addEventListener("pagehide", flushSave);
+
+        function setFileName(name) {
+          fileName = name;
+          fileNameEl.textContent = name;
+          desktop.setTitle(name + " - Markdown Pad");
+        }
+
+        function save() {
+          var base = fileName.replace(/\.[^.]+$/, "") || "note";
+          desktop.download(base + ".md", editor.value, "text/markdown");
+          statusEl.textContent = "Saved " + base + ".md";
+        }
+
+        editor.addEventListener("input", function () {
+          update();
+          scheduleSave();
+        });
+
+        document.getElementById("save").addEventListener("click", save);
+
+        toggleButton.addEventListener("click", function () {
+          var showing = !layout.classList.toggle("editor-only");
+          toggleButton.setAttribute("aria-pressed", String(showing));
+        });
+
+        document.addEventListener("keydown", function (event) {
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+            event.preventDefault();
+            save();
+          }
+        });
+
+        desktop.onInit(function (init) {
+          // Saved edits win over the original file, matching the built-in Notes app.
+          var saved = init.state && typeof init.state.text === "string" ? init.state.text : null;
+          var fromFile = init.file && typeof init.file.text === "string" ? init.file.text : "";
+          editor.value = saved !== null ? saved : fromFile;
+          if (init.file) setFileName(init.file.name);
+          update();
+          editor.focus();
+        });
+
+        update();
+      })();
+    </script>
+  </body>
+</html>

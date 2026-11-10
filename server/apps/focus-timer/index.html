@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Focus Timer</title>
+    <!-- desktop-sdk -->
+    <style>
+      :root { --bg: #fff1f2; --text: #4c0519; --muted: #9f1239; --accent: #be123c; --track: #fecdd3; }
+      [data-theme="dark"] { --bg: #1c0a10; --text: #ffe4e6; --muted: #fda4af; --accent: #fb7185; --track: #4c0519; }
+      body.break { --accent: #047857; --track: #a7f3d0; --muted: #065f46; }
+      [data-theme="dark"] body.break { --accent: #34d399; --track: #064e3b; --muted: #6ee7b7; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .mode { text-transform: uppercase; letter-spacing: 0.2em; font-size: 12px; color: var(--muted); }
+      .ring { position: relative; width: 180px; height: 180px; }
+      .ring svg { transform: rotate(-90deg); }
+      .time { position: absolute; inset: 0; display: grid; place-items: center; font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .controls { display: flex; gap: 8px; }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 8px 18px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+      button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+      .sessions { color: var(--muted); font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="mode" id="mode">Focus</div>
+    <div class="ring">
+      <svg width="180" height="180" viewBox="0 0 180 180" aria-hidden="true">
+        <circle cx="90" cy="90" r="80" fill="none" stroke="var(--track)" stroke-width="10" />
+        <circle id="progress" cx="90" cy="90" r="80" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" />
+      </svg>
+      <div class="time" id="time" role="timer" aria-live="off">25:00</div>
+    </div>
+    <div class="controls">
+      <button type="button" id="start">Start</button>
+      <button type="button" id="reset" class="secondary">Reset</button>
+      <button type="button" id="skip" class="secondary">Skip</button>
+    </div>
+    <div class="sessions" id="sessions" aria-live="polite">0 focus sessions completed</div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var DURATIONS = { focus: 25 * 60, break: 5 * 60 };
+        var CIRCUMFERENCE = 2 * Math.PI * 80;
+        var mode = "focus";
+        var remaining = DURATIONS.focus;
+        var completed = 0;
+        var timer = null;
+        var endsAt = 0;
+
+        var timeEl = document.getElementById("time");
+        var modeEl = document.getElementById("mode");
+        var sessionsEl = document.getElementById("sessions");
+        var startButton = document.getElementById("start");
+        var progress = document.getElementById("progress");
+        progress.setAttribute("stroke-dasharray", String(CIRCUMFERENCE));
+
+        function pad(value) {
+          return value < 10 ? "0" + value : String(value);
+        }
+
+        function render() {
+          var minutes = Math.floor(remaining / 60);
+          var seconds = remaining % 60;
+          var label = pad(minutes) + ":" + pad(seconds);
+          timeEl.textContent = label;
+          modeEl.textContent = mode === "focus" ? "Focus" : "Break";
+          document.body.classList.toggle("break", mode === "break");
+          progress.setAttribute("stroke-dashoffset", String(CIRCUMFERENCE * (1 - remaining / DURATIONS[mode])));
+          sessionsEl.textContent = completed + (completed === 1 ? " focus session" : " focus sessions") + " completed";
+          startButton.textContent = timer ? "Pause" : "Start";
+          desktop.setTitle((timer ? label + " · " : "") + "Focus Timer");
+        }
+
+        function stop() {
+          clearInterval(timer);
+          timer = null;
+        }
+
+        function switchMode() {
+          if (mode === "focus") {
+            completed += 1;
+            desktop.saveState({ completed: completed });
+          }
+          mode = mode === "focus" ? "break" : "focus";
+          remaining = DURATIONS[mode];
+        }
+
+        function tick() {
+          remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+          if (remaining === 0) {
+            stop();
+            switchMode();
+          }
+          render();
+        }
+
+        startButton.addEventListener("click", function () {
+          if (timer) {
+            stop();
+          } else {
+            endsAt = Date.now() + remaining * 1000;
+            timer = setInterval(tick, 250);
+          }
+          render();
+        });
+
+        document.getElementById("reset").addEventListener("click", function () {
+          stop();
+          remaining = DURATIONS[mode];
+          render();
+        });
+
+        document.getElementById("skip").addEventListener("click", function () {
+          stop();
+          mode = mode === "focus" ? "break" : "focus";
+          remaining = DURATIONS[mode];
+          render();
+        });
+
+        desktop.onInit(function (init) {
+          if (init.state && typeof init.state.completed === "number") {
+            completed = init.state.completed;
+          }
+          render();
+        });
+
+        render();
+      })();
+    </script>
+  </body>
+</html>

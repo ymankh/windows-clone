@@ -18,6 +18,11 @@ import { loadPersistedNote, persistNote } from "./persistence";
 const NOTE_SAVE_DELAY_MS = 300;
 const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentProps) => {
   const initialSerializedState = useMemo(() => {
+    // Saved edits win over the original file content; otherwise changes to a
+    // file-backed note would be written to storage but never read back.
+    const persisted = loadPersistedNote(windowId);
+    if (persisted) return persisted;
+
     if (fileContext?.type === FileTypes.notes) {
       const parsed = notesFileDataSchema.safeParse(fileContext.data);
       if (parsed.success) {
@@ -30,7 +35,7 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
       }
     }
 
-    return loadPersistedNote(windowId);
+    return undefined;
   }, [fileContext, windowId]);
 
   const [serialized, setSerialized] = useState<SerializedEditorState | undefined>(

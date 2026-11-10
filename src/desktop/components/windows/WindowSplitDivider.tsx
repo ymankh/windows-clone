@@ -4,30 +4,31 @@ import useWindowsManagerStore from "@/desktop/stores/WindowsStore";
 
 type WindowSplitDividerProps = {
   windowData: WindowState;
-  windows: WindowState[];
   onPointerDown: React.PointerEventHandler<HTMLDivElement>;
 };
 
 const WindowSplitDivider = ({
   windowData,
-  windows,
   onPointerDown,
 }: WindowSplitDividerProps) => {
   const horizontalDockSplit = useWindowsManagerStore((state) => state.horizontalDockSplit);
   const setHorizontalDockSplit = useWindowsManagerStore((state) => state.setHorizontalDockSplit);
+  // Select a boolean rather than the window list so this window does not
+  // re-render every time another window moves.
+  const rightPartner = useWindowsManagerStore((state) =>
+    state.windows.some(
+      (candidate) =>
+        candidate.id !== windowData.id &&
+        !candidate.isMinimized &&
+        candidate.layoutMode === WindowLayoutModes.dockedRight
+    )
+  );
   if (
     windowData.layoutMode !== WindowLayoutModes.dockedLeft &&
     windowData.layoutMode !== WindowLayoutModes.dockedRight
   ) {
     return null;
   }
-
-  const rightPartner = windows.find(
-    (candidate) =>
-      candidate.id !== windowData.id &&
-      !candidate.isMinimized &&
-      candidate.layoutMode === WindowLayoutModes.dockedRight
-  );
 
   if (windowData.layoutMode === WindowLayoutModes.dockedRight || !rightPartner) {
     return null;

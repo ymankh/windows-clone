@@ -27,12 +27,100 @@ Included apps:
 
 ```bash
 npm install
-npm run dev     # local dev server
-npm run build   # production build
-npm run preview # serve the build output
+npm run dev           # local dev server
+npm run store:server  # App Store backend on http://127.0.0.1:4000 (run alongside dev)
+npm run build         # production build
+npm run preview       # serve the build output
+```
+
+## App Store
+
+The desktop includes an **App Store** that installs apps from a small Node backend in `server/`. Installed apps work like built-in ones: they get a desktop icon, appear in the Start menu, open in windows, and can open files from Files.
+
+### How it fits together
+
+```mermaid
+flowchart LR
+  Store["App Store window"] -- "GET /api/apps" --> Server["Node store server"]
+  Store -- "GET /api/apps/:id/package" --> Server
+  Store -- "install" --> Local["localStorage: desktop-installed-apps"]
+  Local --> Registry["App registry"]
+  Registry --> Desktop["Desktop icons, Start menu, Files 'Open with'"]
+  Registry --> Frame["Sandboxed iframe + desktop SDK"]
+```
+
+- **Installing downloads the whole app.** The package (manifest, HTML, icon) is saved in the browser, so installed apps keep working when the store server is offline. The server only serves the catalog and install counts.
+- **Apps are isolated.** Each runs in an iframe with `sandbox="allow-scripts"` (opaque origin, no access to the desktop's storage) and a Content-Security-Policy that blocks all network access. Apps talk to the desktop only through the SDK below.
+- **Uninstalling cleans up:** open windows, the desktop icon position, file-type defaults pointing at the app, and its saved data.
+
+### Opening files and default apps
+
+Apps declare the file types they open in their manifest (`"fileTypes": ["notes"]`). In Files, right-click a file:
+
+- **Open with** lists every installed app that can open it.
+- **Default app for .md** (or the file's extension) picks the app used on double-click. The choice is stored per file type in `localStorage` (`desktop-file-defaults`). If the chosen app is uninstalled, the built-in app is used again.
+
+### Adding an app to the store (no desktop code changes)
+
+Create a folder in `server/apps/<id>/` with three files and restart the server:
+
+- `manifest.json`:
+  ```json
+  {
+    "id": "my-app",
+    "name": "My App",
+    "version": "1.0.0",
+    "author": "You",
+    "description": "What it does.",
+    "category": "Utilities",
+    "fileTypes": [],
+    "minSize": { "width": 400, "height": 300 }
+  }
+  ```
+  The `id` must match the folder name. `fileTypes` can include `notes`, `pdf`, `image`, `audio`, `archive` or `binary`.
+- `index.html`: a single self-contained page (inline CSS and JS). Put `<!-- desktop-sdk -->` in the `<head>` where the SDK should be injected.
+- `icon.svg`: the app icon.
+
+Invalid apps are skipped with a warning, so one bad folder can't take the store down. Bump `version` to offer an **Update** button to users who already installed the app.
+
+### Desktop SDK
+
+Injected into every app as `window.desktop`:
+
+| Call | Purpose |
+| --- | --- |
+| `desktop.onInit(fn)` | Receives `{ windowId, file, state, theme }`. `file` is `{ name, type, text }` for notes (Markdown) or `{ name, type, url }` for other files. `state` is what the app last saved for this window. |
+| `desktop.onThemeChange(fn)` | Called with `"light"` or `"dark"`. The SDK also sets `data-theme` on `<html>`. |
+| `desktop.setTitle(text)` | Changes the window title. |
+| `desktop.saveState(value)` | Persists JSON-serialisable state for this window (up to about 1 MB). |
+| `desktop.download(name, content, mimeType)` | Saves a text file to the user's computer. |
+
+The example apps are **Markdown Pad** (an alternative Notes opener), **Calculator** and **Focus Timer**.
+
+### Store API
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/health` | Liveness check |
+| GET | `/api/apps` | Catalog listing |
+| GET | `/api/apps/:id` | One catalog entry |
+| GET | `/api/apps/:id/icon.svg` | App icon |
+| GET | `/api/apps/:id/package` | Manifest, HTML and icon for installing |
+| POST | `/api/apps/:id/installs` | Record an install (counts saved to `server/data/installs.json`) |
+
+Configuration: `STORE_PORT` (default `4000`), `STORE_HOST` (default `127.0.0.1`) and `STORE_ALLOWED_ORIGIN` (default `*`) on the server; `VITE_STORE_API_URL` on the desktop if the server runs elsewhere.
+
+## Unit Testing
+
+Pure logic (window store, docking math, icon grid placement, Notes serialization) is covered by Vitest tests in `tests/unit`:
+
+```bash
+npm run test:unit
 ```
 
 ## End-to-End Testing
+
+The Playwright suite reads the window store through `window.__windowsManagerStore`, which is exposed in dev builds. To run it against a production build, build with `VITE_EXPOSE_TEST_HOOKS=true` and point `APP_URL` at the preview server.
 
 Playwright tests now live under `tests/playwright` and are written in TypeScript.
 
@@ -152,6 +240,11 @@ Icons are positioned with `localStorage` (`desktop-icon-positions`); new apps ge
 
 ## Current app behavior
 
+- Apps can be launched from desktop icons (double-click, Enter, or a tap on touch screens) or from the Start menu in the taskbar.
+- Minimized windows stay mounted, so app state survives and Music keeps playing.
+- "Remove from desktop" hides an icon; the choice persists in `localStorage` (`desktop-hidden-icons`) and the desktop context menu offers **Restore removed icons**.
+- Notes opened from Files keep their edits: saved changes take priority over the original file content.
+- Each window's content is wrapped in an error boundary, so a crashing app does not take down the desktop.
 - Browser opens project shortcuts for `https://donoud.pages.dev` and `https://yamanalkhashashneh.online`, and supports manual URL entry.
 - Files only lists folders and files that can actually be opened by one of the registered apps.
 - Music supports opening audio files from Files via app file capabilities and starts playback automatically when a track is launched from Explorer.
@@ -202,11 +295,11 @@ Icons are positioned with `localStorage` (`desktop-icon-positions`); new apps ge
 - React 19 + TypeScript
 - Vite (rolldown build) with React Compiler
 - Tailwind CSS v4 + class-variance-authority + tailwind-merge + clsx
-- Radix UI primitives (context menu, menubar, navigation menu, tooltip)
+- Radix UI primitives (context menu, menubar, tooltip)
 - Zustand + Immer for window state management
 - lucide-react icons
 - Lexical + shadcn-editor for the Notes rich text editor
 - react-pdf + pdfjs-dist for PDF rendering
 - react-terminal for the terminal app
-- Motion for animation primitives (available for future interactions)
+- Framer Motion for window and dock animations
 - ESLint 9 (React/TypeScript configs)

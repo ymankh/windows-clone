@@ -1,0 +1,10 @@
+{
+  "id": "markdown-pad",
+  "name": "Markdown Pad",
+  "version": "1.0.0",
+  "author": "Desktop Store",
+  "description": "A lightweight Markdown editor with a live preview. Opens Notes files, so you can make it your default notes app.",
+  "category": "Productivity",
+  "fileTypes": ["notes"],
+  "minSize": { "width": 560, "height": 360 }
+}

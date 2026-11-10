@@ -32,4 +32,6 @@ export type OpenWithOption = {
   id: string;
   title: string;
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
+  /** True for the app that opens this file type on double-click. */
+  isDefault: boolean;
 };

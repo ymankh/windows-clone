@@ -22,7 +22,8 @@ export default defineConfig({
   webServer: process.env.APP_URL
     ? undefined
     : {
-        command: `npm run dev -- --host ${host} --port ${port}`,
+        // The specs mock the App Store, so only the web server is needed.
+        command: `npm run dev:web -- --host ${host} --port ${port}`,
         url: baseURL,
         reuseExistingServer: true,
         timeout: 120_000,

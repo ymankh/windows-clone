@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Text Insights</title>
+    <!-- desktop-sdk -->
+    <!-- desktop-ui -->
+    <style>
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 280px); height: 100%; }
+      #text {
+        height: 100%;
+        min-height: 0;
+        padding: 16px;
+        border: 0;
+        border-right: 1px solid var(--border);
+        border-radius: 0;
+        resize: none;
+        outline: none;
+        line-height: 1.6;
+      }
+      .side { overflow: auto; padding: 14px; }
+      .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stats .ui-card { padding: 10px; }
+      .word { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; }
+      .word .ui-progress { grid-column: 1 / -1; height: 5px; }
+    </style>
+  </head>
+  <body class="ui-app">
+    <header class="ui-toolbar">
+      <h1 class="ui-heading ui-truncate" id="file-name">Paste or type some text</h1>
+      <span class="ui-spacer"></span>
+      <button type="button" class="ui-button ui-button--sm" id="clear">Clear</button>
+    </header>
+
+    <main class="ui-content ui-content--flush">
+      <div class="layout">
+        <textarea class="ui-textarea" id="text" aria-label="Text to look at" placeholder="Write or paste your text here…"></textarea>
+        <aside class="side ui-stack">
+          <div class="stats">
+            <div class="ui-card ui-card--flat ui-stat"><span class="ui-stat__value" id="words">0</span><span class="ui-stat__label">Words</span></div>
+            <div class="ui-card ui-card--flat ui-stat"><span class="ui-stat__value" id="characters">0</span><span class="ui-stat__label">Characters</span></div>
+            <div class="ui-card ui-card--flat ui-stat"><span class="ui-stat__value" id="sentences">0</span><span class="ui-stat__label">Sentences</span></div>
+            <div class="ui-card ui-card--flat ui-stat"><span class="ui-stat__value" id="reading">0 min</span><span class="ui-stat__label">Reading time</span></div>
+          </div>
+
+          <section class="ui-stack ui-gap-sm">
+            <h2 class="ui-overline">Words you use most</h2>
+            <div class="ui-stack ui-gap-sm" id="top-words"></div>
+            <p class="ui-small ui-muted" id="top-empty">Add a few sentences to see your favourite words.</p>
+          </section>
+
+          <section class="ui-stack ui-gap-sm">
+            <h2 class="ui-overline">Longest sentence</h2>
+            <p class="ui-small" id="longest">–</p>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        // Everyday words that would otherwise always top the list.
+        const COMMON = new Set(
+          ("the a an and or but of to in on at for with by from as is are was were be been it its this that " +
+            "these those i you he she we they my your his her our their me him them not no so if then than " +
+            "there here have has had do does did will would can could should about into over up out just also").split(" ")
+        );
+        const el = desktop.ui.el;
+        const text = document.getElementById("text");
+        let saveTimer = null;
+
+        function update() {
+          const value = text.value;
+          const words = value.toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) || [];
+          const sentences = value
+            .split(/(?<=[.!?…])\s+|\n+/)
+            .map((sentence) => sentence.trim())
+            .filter((sentence) => /[\p{L}\p{N}]/u.test(sentence));
+          const minutes = words.length / 200;
+
+          document.getElementById("words").textContent = words.length.toLocaleString();
+          document.getElementById("characters").textContent = value.length.toLocaleString();
+          document.getElementById("sentences").textContent = sentences.length.toLocaleString();
+          document.getElementById("reading").textContent =
+            !words.length ? "0 min" : minutes < 1 ? "< 1 min" : Math.round(minutes) + " min";
+
+          const counts = new Map();
+          words.forEach((word) => {
+            if (word.length < 3 || COMMON.has(word)) return;
+            counts.set(word, (counts.get(word) || 0) + 1);
+          });
+          const top = Array.from(counts)
+            .filter((entry) => entry[1] > 1)
+            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+            .slice(0, 6);
+
+          document.getElementById("top-words").replaceChildren(
+            ...top.map((entry) =>
+              el("div", { class: "word" }, [
+                el("span", { class: "ui-truncate", text: entry[0] }),
+                el("span", { class: "ui-badge", text: entry[1] + "×" }),
+                el("div", { class: "ui-progress" }, el("div", {
+                  class: "ui-progress__bar",
+                  style: "width:" + Math.round((entry[1] / top[0][1]) * 100) + "%",
+                })),
+              ])
+            )
+          );
+          document.getElementById("top-empty").hidden = top.length > 0;
+
+          const longest = sentences.reduce((a, b) => (b.length > a.length ? b : a), "");
+          document.getElementById("longest").textContent = longest
+            ? (longest.length > 220 ? longest.slice(0, 220) + "…" : longest)
+            : "–";
+        }
+
+        function flushSave() {
+          if (saveTimer === null) return;
+          clearTimeout(saveTimer);
+          saveTimer = null;
+          desktop.saveState({ text: text.value });
+        }
+
+        text.addEventListener("input", () => {
+          update();
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(flushSave, 300);
+        });
+        window.addEventListener("blur", flushSave);
+        window.addEventListener("pagehide", flushSave);
+
+        document.getElementById("clear").addEventListener("click", () => {
+          if (!text.value) return;
+          desktop.ui.confirm("Clear all the text?", { confirmLabel: "Clear", danger: true }).then((confirmed) => {
+            if (!confirmed) return;
+            text.value = "";
+            desktop.saveState({ text: "" });
+            update();
+            text.focus();
+          });
+        });
+
+        desktop.onInit((init) => {
+          // Text typed here earlier wins over the original file.
+          const saved = init.state && typeof init.state.text === "string" ? init.state.text : null;
+          const fromFile = init.file && typeof init.file.text === "string" ? init.file.text : "";
+          text.value = saved !== null ? saved : fromFile;
+          if (init.file) {
+            document.getElementById("file-name").textContent = init.file.name;
+            desktop.setTitle(init.file.name + " - Text Insights");
+          }
+          update();
+        });
+
+        update();
+      })();
+    </script>
+  </body>
+</html>

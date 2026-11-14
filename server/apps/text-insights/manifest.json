@@ -1,0 +1,10 @@
+{
+  "id": "text-insights",
+  "name": "Text Insights",
+  "version": "1.0.0",
+  "author": "Desktop Store",
+  "description": "See what is inside your writing: word count, reading time, longest sentence and the words you use most. Opens Notes files.",
+  "category": "Productivity",
+  "fileTypes": ["notes"],
+  "minSize": { "width": 560, "height": 400 }
+}

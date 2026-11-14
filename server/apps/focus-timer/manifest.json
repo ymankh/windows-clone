@@ -1,7 +1,7 @@
 {
   "id": "focus-timer",
   "name": "Focus Timer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Desktop Store",
   "description": "A Pomodoro-style focus timer with work and break sessions. Remembers your session count.",
   "category": "Productivity",

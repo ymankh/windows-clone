@@ -1,0 +1,9 @@
+{
+  "id": "palette-lab",
+  "name": "Palette Lab",
+  "version": "1.0.0",
+  "author": "Desktop Store",
+  "description": "Pick one colour and get a matching palette. Try different colour harmonies, keep your favourites and save them.",
+  "category": "Design",
+  "minSize": { "width": 480, "height": 440 }
+}

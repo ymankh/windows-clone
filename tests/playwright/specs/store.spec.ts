@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type FrameLocator, type Page } from "@playwright/test";
 import { routeStoreRequest } from "../../../server/app";
 import { loadCatalog } from "../../../server/catalog";
 import { createInstallStats } from "../../../server/stats";
@@ -8,7 +8,7 @@ import { openDesktop, openDesktopApp } from "../helpers/desktop";
 import { getWindowByTitle, waitForWindow } from "../helpers/window";
 
 const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../server");
-const catalog = loadCatalog(path.join(serverDir, "apps"), path.join(serverDir, "sdk", "desktop-sdk.js"));
+const catalog = loadCatalog(path.join(serverDir, "apps"), path.join(serverDir, "sdk"));
 
 const STORE_URL = "http://127.0.0.1:4000";
 
@@ -140,7 +140,7 @@ test("[store.uninstall] removes the app, its icon and its file default", async (
   await expect(page.getByRole("dialog", { name: "Notes" })).toBeVisible();
 });
 
-test("[store.offline] explains how to start the store server when it is unreachable", async ({
+test("[store.offline] shows a plain-language message when the store server is unreachable", async ({
   page,
 }) => {
   await page.unroute(`${STORE_URL}/**`);
@@ -148,7 +148,178 @@ test("[store.offline] explains how to start the store server when it is unreacha
   await openDesktopApp(page, "App Store");
   await waitForWindow(page, "App Store");
 
-  await expect(getWindowByTitle(page, "App Store").getByRole("alert")).toContainText(
+  const alert = getWindowByTitle(page, "App Store").getByRole("alert");
+  await expect(alert).toContainText("The App Store is unavailable right now.");
+  // Technical details belong in the console, not in front of the user.
+  await expect(alert).not.toContainText("127.0.0.1");
+  await expect(alert).not.toContainText(
     "npm run store:server"
   );
+});
+
+// ---------------------------------------------------------------------------
+// Shared UI library and theming
+// ---------------------------------------------------------------------------
+
+const appFrame = (page: Page, appId: string) =>
+  page.frameLocator(`iframe[data-store-app="${appId}"]`);
+
+const appWindow = (page: Page, appId: string) =>
+  page.getByRole("dialog").filter({ has: page.locator(`iframe[data-store-app="${appId}"]`) });
+
+const installApp = async (page: Page, appId: string, name: string) => {
+  const listing = storeListing(page, appId);
+  await listing.getByRole("button", { name: `Install ${name}` }).click();
+  await expect(listing.getByRole("button", { name: `Open ${name}` })).toBeVisible();
+};
+
+const openInstalledApp = async (page: Page, appId: string) => {
+  await page.locator(`[data-desktop-icon-id="store:${appId}"]`).dispatchEvent("dblclick");
+  await expect(appWindow(page, appId)).toBeVisible();
+};
+
+const hostToken = (page: Page, name: string) =>
+  page.evaluate(
+    (token) => getComputedStyle(document.documentElement).getPropertyValue(`--${token}`).trim(),
+    name
+  );
+
+const appToken = (frame: FrameLocator, name: string) =>
+  frame.locator("html").evaluate((root, token) => root.style.getPropertyValue(`--${token}`), name);
+
+test("[store.ui-theme] store apps follow the desktop theme", async ({ page }) => {
+  // Personalization first, while the desktop is still uncovered.
+  await page
+    .locator("div.flex.min-h-screen.w-full.flex-wrap")
+    .click({ button: "right", position: { x: 1000, y: 600 } });
+  await page.getByRole("menuitem", { name: "Personalization" }).click();
+  const personalization = getWindowByTitle(page, "Personalization");
+  await expect(personalization).toBeVisible();
+
+  await openDesktopApp(page, "App Store");
+  await waitForWindow(page, "App Store");
+  await installApp(page, "task-board", "Task Board");
+  await openInstalledApp(page, "task-board");
+  const frame = appFrame(page, "task-board");
+
+  const initialPrimary = await hostToken(page, "primary");
+  expect(initialPrimary).not.toBe("");
+  await expect.poll(() => appToken(frame, "primary")).toBe(initialPrimary);
+  await expect.poll(() => appToken(frame, "border")).toBe(await hostToken(page, "border"));
+
+  // The shared button really is painted with the desktop's primary colour.
+  const paint = (color: string) =>
+    page.evaluate((value) => {
+      const probe = document.createElement("div");
+      probe.style.color = value;
+      document.body.appendChild(probe);
+      const resolved = getComputedStyle(probe).color;
+      probe.remove();
+      return resolved;
+    }, color);
+  const addButton = frame.getByRole("button", { name: "Add task" });
+  await expect(addButton).toHaveCSS("background-color", await paint(initialPrimary));
+
+  // Switching the desktop theme re-themes the running app.
+  await page.locator("div.fixed.bottom-0").getByRole("button", { name: "Personalization" }).click();
+  await personalization.getByRole("button", { name: /Linen Citrus/ }).click();
+  await expect.poll(() => hostToken(page, "primary")).not.toBe(initialPrimary);
+  const nextPrimary = await hostToken(page, "primary");
+  await expect.poll(() => appToken(frame, "primary")).toBe(nextPrimary);
+  await expect(addButton).toHaveCSS("background-color", await paint(nextPrimary));
+});
+
+// One real interaction per app. A new store app needs an entry here.
+const appChecks: Record<string, (frame: FrameLocator) => Promise<void>> = {
+  calculator: async (frame) => {
+    await frame.getByRole("button", { name: "7", exact: true }).click();
+    await frame.getByRole("button", { name: "Add" }).click();
+    await frame.getByRole("button", { name: "5", exact: true }).click();
+    await frame.getByRole("button", { name: "Equals" }).click();
+    await expect(frame.locator("#value")).toHaveText("12");
+  },
+  "focus-timer": async (frame) => {
+    await frame.getByRole("button", { name: "Start" }).click();
+    await expect(frame.getByRole("button", { name: "Pause" })).toBeVisible();
+  },
+  "habit-garden": async (frame) => {
+    await expect(frame.getByText("Your garden is empty")).toBeVisible();
+    await frame.getByLabel("New habit").fill("Stretch");
+    await frame.getByRole("button", { name: "Plant" }).click();
+    await frame.getByRole("button", { name: "Water today" }).click();
+    await expect(frame.getByText("1 day streak")).toBeVisible();
+    await expect(frame.getByText("1 of 1 watered today")).toBeVisible();
+  },
+  "markdown-pad": async (frame) => {
+    await frame.locator("#editor").fill("# Checked");
+    await expect(frame.locator("#preview h1")).toHaveText("Checked");
+  },
+  "memory-match": async (frame) => {
+    await frame.getByRole("button", { name: "Card 1, face down" }).click();
+    await expect(frame.getByRole("button", { name: /^Card 1: / })).toBeVisible();
+  },
+  "palette-lab": async (frame) => {
+    await expect(frame.locator("#swatches > *")).toHaveCount(5);
+    await frame.getByRole("button", { name: "Keep", exact: true }).click();
+    await expect(frame.getByText("Palette kept")).toBeVisible();
+    await expect(frame.locator("#kept li")).toHaveCount(1);
+  },
+  "photo-filters": async (frame) => {
+    await frame.getByRole("button", { name: "Warm" }).click();
+    await expect(frame.getByRole("button", { name: "Warm" })).toHaveAttribute("aria-pressed", "true");
+    await expect(frame.locator("#sample")).toHaveCSS("filter", /sepia\(0\.35\)/);
+  },
+  "pixel-studio": async (frame) => {
+    const firstCell = frame.locator(".cell").first();
+    await firstCell.click();
+    await expect(firstCell).toHaveAttribute("style", /background/);
+    // Clearing asks first, using the shared confirmation dialog.
+    await frame.getByRole("button", { name: "Clear" }).click();
+    await frame.getByRole("dialog").getByRole("button", { name: "Clear" }).click();
+    await expect(firstCell).not.toHaveAttribute("style", /background: rgb/);
+  },
+  "task-board": async (frame) => {
+    await frame.getByLabel("New task").fill("Ship it");
+    await frame.getByRole("button", { name: "Add task" }).click();
+    await frame.getByRole("button", { name: "Move “Ship it” forward" }).click();
+    await expect(frame.getByRole("region", { name: "Doing" })).toContainText("Ship it");
+  },
+  "text-insights": async (frame) => {
+    await frame.getByLabel("Text to look at").fill("One two three. Four five");
+    await expect(frame.locator("#words")).toHaveText("5");
+    await expect(frame.locator("#sentences")).toHaveText("2");
+  },
+};
+
+test("[store.apps.smoke] every store app installs, starts themed and works", async ({ page }) => {
+  test.setTimeout(120_000);
+  expect(Object.keys(appChecks).sort()).toEqual([...catalog.keys()].sort());
+
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+
+  await openDesktopApp(page, "App Store");
+  await waitForWindow(page, "App Store");
+  for (const app of catalog.values()) {
+    await installApp(page, app.manifest.id, app.manifest.name);
+  }
+
+  for (const app of catalog.values()) {
+    const appId = app.manifest.id;
+    await test.step(app.manifest.name, async () => {
+      await openInstalledApp(page, appId);
+      const frame = appFrame(page, appId);
+      // The app received the desktop theme, and uses the shared UI library.
+      await expect(frame.locator("html")).toHaveAttribute("data-theme", /light|dark/);
+      await expect.poll(() => appToken(frame, "primary")).not.toBe("");
+      expect(app.html).toContain(".ui-button");
+
+      await appChecks[appId](frame);
+
+      await appWindow(page, appId).getByRole("button", { name: "Close" }).click();
+      await expect(appWindow(page, appId)).toHaveCount(0);
+    });
+  }
+
+  expect(pageErrors).toEqual([]);
 });

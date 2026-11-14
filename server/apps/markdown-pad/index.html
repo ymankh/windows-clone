@@ -4,91 +4,45 @@
     <meta charset="UTF-8" />
     <title>Markdown Pad</title>
     <!-- desktop-sdk -->
+    <!-- desktop-ui -->
     <style>
-      :root {
-        --bg: #ffffff;
-        --panel: #f8fafc;
-        --text: #0f172a;
-        --muted: #64748b;
-        --border: #e2e8f0;
-        --accent: #0f766e;
-        --code: #f1f5f9;
-      }
-      [data-theme="dark"] {
-        --bg: #0f172a;
-        --panel: #111c33;
-        --text: #e2e8f0;
-        --muted: #94a3b8;
-        --border: #1e293b;
-        --accent: #2dd4bf;
-        --code: #1e293b;
-      }
-      * { box-sizing: border-box; }
-      html, body { height: 100%; margin: 0; }
-      body {
-        display: flex;
-        flex-direction: column;
-        background: var(--bg);
-        color: var(--text);
-        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-      }
-      header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-bottom: 1px solid var(--border);
-        background: var(--panel);
-      }
-      header .name { font-weight: 600; }
-      header .status { margin-left: auto; color: var(--muted); font-size: 12px; }
-      button {
-        border: 1px solid var(--border);
-        background: var(--bg);
-        color: var(--text);
-        border-radius: 6px;
-        padding: 4px 10px;
-        font: inherit;
-        cursor: pointer;
-      }
-      button:hover { border-color: var(--accent); }
-      button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-      main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; }
+      main { display: grid; grid-template-columns: 1fr 1fr; }
       main.editor-only { grid-template-columns: 1fr; }
       main.editor-only #preview { display: none; }
-      textarea {
+      #editor {
         width: 100%;
         height: 100%;
         resize: none;
         border: 0;
         border-right: 1px solid var(--border);
         padding: 16px;
-        background: var(--bg);
-        color: var(--text);
-        font: 14px/1.6 ui-monospace, "Cascadia Code", Consolas, monospace;
+        background: var(--background);
+        color: var(--foreground);
+        font: 14px/1.6 var(--font-mono);
         outline: none;
       }
       #preview { overflow: auto; padding: 16px 20px; }
       #preview h1, #preview h2, #preview h3 { line-height: 1.25; margin: 0.8em 0 0.4em; }
       #preview h1:first-child, #preview h2:first-child, #preview h3:first-child { margin-top: 0; }
       #preview p { margin: 0 0 0.8em; }
-      #preview code { background: var(--code); border-radius: 4px; padding: 1px 5px; font-family: ui-monospace, Consolas, monospace; }
-      #preview pre { background: var(--code); border-radius: 6px; padding: 10px 12px; overflow: auto; }
+      #preview code { background: var(--muted); border-radius: var(--ui-radius-sm); padding: 1px 5px; font-family: var(--font-mono); }
+      #preview pre { background: var(--muted); border-radius: var(--radius); padding: 10px 12px; overflow: auto; }
       #preview pre code { background: none; padding: 0; }
-      #preview blockquote { margin: 0 0 0.8em; padding-left: 12px; border-left: 3px solid var(--accent); color: var(--muted); }
-      #preview .link { color: var(--accent); text-decoration: underline; }
+      #preview blockquote { margin: 0 0 0.8em; padding-left: 12px; border-left: 3px solid var(--primary); color: var(--muted-foreground); }
+      #preview .link { color: var(--primary); text-decoration: underline; }
       #preview hr { border: 0; border-top: 1px solid var(--border); }
-      .empty { color: var(--muted); font-style: italic; }
+      .empty { color: var(--muted-foreground); font-style: italic; }
     </style>
   </head>
-  <body>
-    <header>
-      <span class="name" id="file-name">Untitled.md</span>
-      <button type="button" id="toggle-preview" aria-pressed="true">Preview</button>
-      <button type="button" id="save">Save as .md</button>
-      <span class="status" id="status" aria-live="polite"></span>
+  <body class="ui-app">
+    <header class="ui-toolbar">
+      <span class="ui-heading ui-truncate" id="file-name">Untitled.md</span>
+      <button type="button" class="ui-button ui-button--sm" id="toggle-preview" aria-pressed="true">Preview</button>
+      <button type="button" class="ui-button ui-button--sm ui-button--primary" id="save">Save as .md</button>
+      <span class="ui-spacer"></span>
+      <span class="ui-small ui-muted" id="status" aria-live="polite"></span>
     </header>
-    <main id="layout">
+    <main id="layout" class="ui-content ui-content--flush">
       <textarea id="editor" aria-label="Markdown source" spellcheck="true" placeholder="Start writing Markdown…"></textarea>
       <article id="preview" aria-label="Preview"></article>
     </main>

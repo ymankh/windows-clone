@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Photo Filters</title>
+    <!-- desktop-sdk -->
+    <!-- desktop-ui -->
+    <style>
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 240px; height: 100%; }
+      .stage {
+        display: grid;
+        place-items: center;
+        min-height: 0;
+        padding: 16px;
+        overflow: hidden;
+        background: var(--muted);
+      }
+      .stage img, .sample { max-width: 100%; max-height: 100%; border-radius: var(--radius); box-shadow: var(--ui-shadow); }
+      .stage img { object-fit: contain; }
+      /* Shown until the user opens a picture of their own. */
+      .sample {
+        width: min(100%, 420px);
+        aspect-ratio: 4 / 3;
+        background:
+          radial-gradient(circle at 72% 30%, #fff7c2 0 7%, #ffd166 8% 11%, transparent 12%),
+          radial-gradient(ellipse at 20% 105%, #2d6a4f 0 38%, transparent 39%),
+          radial-gradient(ellipse at 75% 110%, #40916c 0 45%, transparent 46%),
+          linear-gradient(#5aa9e6 0%, #a9d6f5 55%, #ffe5b4 100%);
+      }
+      .side { overflow: auto; padding: 14px; border-left: 1px solid var(--border); background: var(--card); }
+      .looks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+      .slider .ui-range { grid-column: 1 / -1; }
+    </style>
+  </head>
+  <body class="ui-app">
+    <main class="ui-content ui-content--flush">
+      <div class="layout">
+        <div class="stage">
+          <img id="photo" alt="" hidden />
+          <div class="sample" id="sample" role="img" aria-label="Sample picture of hills under a sunny sky"></div>
+        </div>
+        <aside class="side ui-stack">
+          <div class="ui-notice ui-notice--danger ui-small" id="error" role="alert" hidden>
+            This picture couldn't be shown, so the sample picture is used instead.
+          </div>
+          <section class="ui-stack ui-gap-sm">
+            <h2 class="ui-overline">Looks</h2>
+            <div class="looks" id="looks"></div>
+          </section>
+          <section class="ui-stack ui-gap-sm">
+            <h2 class="ui-overline">Fine-tune</h2>
+            <div class="ui-stack ui-gap-sm" id="sliders"></div>
+          </section>
+          <button type="button" class="ui-button ui-button--block" id="reset">Reset</button>
+        </aside>
+      </div>
+    </main>
+
+    <footer class="ui-footer ui-truncate" id="caption">
+      Sample picture. To use your own, right-click a picture in Files and choose Open with.
+    </footer>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const SETTINGS = [
+          { id: "brightness", label: "Brightness", min: 50, max: 150, unit: "%", start: 100 },
+          { id: "contrast", label: "Contrast", min: 50, max: 150, unit: "%", start: 100 },
+          { id: "saturate", label: "Colour", min: 0, max: 200, unit: "%", start: 100 },
+          { id: "sepia", label: "Warmth", min: 0, max: 100, unit: "%", start: 0 },
+          { id: "hue", label: "Tint", min: -180, max: 180, unit: "°", start: 0 },
+          { id: "blur", label: "Softness", min: 0, max: 10, unit: "", start: 0 },
+        ];
+        const LOOKS = [
+          { name: "Original", values: {} },
+          { name: "Warm", values: { sepia: 35, saturate: 120, brightness: 105 } },
+          { name: "Vintage", values: { sepia: 60, contrast: 85, brightness: 108, saturate: 80 } },
+          { name: "Black & white", values: { saturate: 0, contrast: 120 } },
+          { name: "Vivid", values: { saturate: 160, contrast: 115 } },
+          { name: "Dreamy", values: { blur: 2, brightness: 112, saturate: 125 } },
+        ];
+        const el = desktop.ui.el;
+        const photo = document.getElementById("photo");
+        const sample = document.getElementById("sample");
+        const defaults = () => Object.fromEntries(SETTINGS.map((setting) => [setting.id, setting.start]));
+        let values = defaults();
+        const controls = {};
+
+        SETTINGS.forEach((setting) => {
+          const output = el("span", { class: "ui-small ui-muted" });
+          const input = el("input", {
+            type: "range",
+            class: "ui-range",
+            id: "setting-" + setting.id,
+            min: setting.min,
+            max: setting.max,
+            oninput: () => {
+              values[setting.id] = Number(input.value);
+              change();
+            },
+          });
+          controls[setting.id] = { input: input, output: output };
+          document.getElementById("sliders").appendChild(
+            el("div", { class: "slider" }, [
+              el("label", { class: "ui-label", for: input.id, text: setting.label }),
+              output,
+              input,
+            ])
+          );
+        });
+
+        const lookButtons = LOOKS.map((look) => {
+          const button = el("button", {
+            type: "button",
+            class: "ui-button ui-button--sm",
+            text: look.name,
+            onclick: () => {
+              values = Object.assign(defaults(), look.values);
+              change();
+            },
+          });
+          document.getElementById("looks").appendChild(button);
+          return button;
+        });
+
+        function apply() {
+          const filter =
+            "brightness(" + values.brightness + "%) contrast(" + values.contrast + "%) saturate(" +
+            values.saturate + "%) sepia(" + values.sepia + "%) hue-rotate(" + values.hue + "deg) blur(" +
+            values.blur + "px)";
+          photo.style.filter = filter;
+          sample.style.filter = filter;
+
+          SETTINGS.forEach((setting) => {
+            controls[setting.id].input.value = String(values[setting.id]);
+            controls[setting.id].output.textContent = values[setting.id] + setting.unit;
+          });
+          LOOKS.forEach((look, index) => {
+            const expected = Object.assign(defaults(), look.values);
+            const active = SETTINGS.every((setting) => expected[setting.id] === values[setting.id]);
+            lookButtons[index].setAttribute("aria-pressed", String(active));
+          });
+        }
+
+        // Only what the user changes is saved, never the starting values.
+        function change() {
+          apply();
+          desktop.saveState({ values: values });
+        }
+
+        document.getElementById("reset").addEventListener("click", () => {
+          values = defaults();
+          change();
+        });
+
+        photo.addEventListener("load", () => {
+          photo.hidden = false;
+          sample.hidden = true;
+        });
+        photo.addEventListener("error", () => {
+          photo.hidden = true;
+          sample.hidden = false;
+          document.getElementById("error").hidden = false;
+        });
+
+        desktop.onInit((init) => {
+          const saved = init.state && init.state.values;
+          if (saved && typeof saved === "object") {
+            SETTINGS.forEach((setting) => {
+              const value = Number(saved[setting.id]);
+              if (Number.isFinite(value)) values[setting.id] = Math.min(setting.max, Math.max(setting.min, value));
+            });
+          }
+          if (init.file && init.file.url) {
+            photo.alt = init.file.name;
+            photo.src = init.file.url;
+            document.getElementById("caption").textContent = init.file.name;
+            desktop.setTitle(init.file.name + " - Photo Filters");
+          }
+          apply();
+        });
+
+        apply();
+      })();
+    </script>
+  </body>
+</html>

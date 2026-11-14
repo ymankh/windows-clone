@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Habit Garden</title>
+    <!-- desktop-sdk -->
+    <!-- desktop-ui -->
+    <style>
+      .add { display: flex; flex: 1; gap: 8px; }
+      .plant { font-size: 44px; line-height: 1; text-align: center; }
+      .plant--thirsty { filter: grayscale(0.7); opacity: 0.75; }
+      .week { display: flex; justify-content: center; gap: 4px; }
+      .day { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+      .day--done { background: var(--chart-2); }
+      .day--today { box-shadow: 0 0 0 2px var(--ring); }
+      .habit { position: relative; text-align: center; }
+      .remove { position: absolute; top: 6px; right: 6px; }
+    </style>
+  </head>
+  <body class="ui-app">
+    <header class="ui-toolbar">
+      <div class="add">
+        <input class="ui-input" id="name" maxlength="40" placeholder="New habit, e.g. Read 10 pages" aria-label="New habit" />
+        <button type="button" class="ui-button ui-button--primary" id="add">Plant</button>
+      </div>
+    </header>
+
+    <main class="ui-content">
+      <div class="ui-grid" id="garden"></div>
+      <div class="ui-empty" id="empty" hidden>
+        <div class="ui-empty__icon">🪴</div>
+        <div class="ui-empty__title">Your garden is empty</div>
+        <div>Plant your first habit above, then water it every day you keep it.</div>
+      </div>
+    </main>
+
+    <footer class="ui-footer" id="summary"></footer>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const STAGES = [
+          { from: 30, plant: "🌸", name: "In full bloom" },
+          { from: 14, plant: "🌳", name: "Tall tree" },
+          { from: 7, plant: "🪴", name: "Leafy plant" },
+          { from: 3, plant: "🌿", name: "Young sprig" },
+          { from: 1, plant: "🌱", name: "Seedling" },
+          { from: 0, plant: "🌰", name: "Seed" },
+        ];
+        const el = desktop.ui.el;
+        const garden = document.getElementById("garden");
+        const nameInput = document.getElementById("name");
+        let habits = [];
+
+        const pad = (value) => String(value).padStart(2, "0");
+        const dayKey = (offset) => {
+          const date = new Date();
+          date.setDate(date.getDate() - offset);
+          return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+        };
+
+        // A streak survives until the end of today: yesterday still counts.
+        function streakOf(habit) {
+          let offset = habit.days.includes(dayKey(0)) ? 0 : 1;
+          let streak = 0;
+          while (habit.days.includes(dayKey(offset))) {
+            streak += 1;
+            offset += 1;
+          }
+          return streak;
+        }
+
+        function save() {
+          desktop.saveState({ habits: habits });
+        }
+
+        function toggleToday(habit) {
+          const today = dayKey(0);
+          if (habit.days.includes(today)) habit.days = habit.days.filter((day) => day !== today);
+          else habit.days = habit.days.concat(today).slice(-400);
+          save();
+          render();
+        }
+
+        function removeHabit(habit) {
+          desktop.ui
+            .confirm('Remove "' + habit.name + '" and its streak?', { confirmLabel: "Remove", danger: true })
+            .then((confirmed) => {
+              if (!confirmed) return;
+              habits = habits.filter((entry) => entry !== habit);
+              save();
+              render();
+            });
+        }
+
+        function render() {
+          garden.replaceChildren();
+          let wateredToday = 0;
+
+          habits.forEach((habit) => {
+            const streak = streakOf(habit);
+            const done = habit.days.includes(dayKey(0));
+            const stage = STAGES.find((entry) => streak >= entry.from);
+            if (done) wateredToday += 1;
+
+            const week = el("div", { class: "week", "aria-hidden": "true" });
+            for (let offset = 6; offset >= 0; offset -= 1) {
+              const classes = ["day"];
+              if (habit.days.includes(dayKey(offset))) classes.push("day--done");
+              if (offset === 0) classes.push("day--today");
+              week.appendChild(el("span", { class: classes.join(" ") }));
+            }
+
+            garden.appendChild(
+              el("article", { class: "ui-card ui-stack ui-gap-sm habit" }, [
+                el("button", {
+                  type: "button",
+                  class: "ui-button ui-button--ghost ui-button--icon ui-button--sm remove",
+                  "aria-label": "Remove " + habit.name,
+                  text: "✕",
+                  onclick: () => removeHabit(habit),
+                }),
+                el("div", { class: "plant" + (done ? "" : " plant--thirsty"), title: stage.name, text: stage.plant }),
+                el("div", { class: "ui-heading ui-truncate", text: habit.name }),
+                el("div", {}, el("span", {
+                  class: "ui-badge" + (streak ? " ui-badge--accent" : ""),
+                  text: streak ? streak + (streak === 1 ? " day streak" : " days streak") : "Not started",
+                })),
+                week,
+                el("button", {
+                  type: "button",
+                  class: "ui-button ui-button--sm ui-button--block" + (done ? "" : " ui-button--primary"),
+                  "aria-pressed": String(done),
+                  text: done ? "Watered today ✓" : "Water today",
+                  onclick: () => toggleToday(habit),
+                }),
+              ])
+            );
+          });
+
+          document.getElementById("empty").hidden = habits.length > 0;
+          document.getElementById("summary").textContent = habits.length
+            ? wateredToday + " of " + habits.length + " watered today"
+            : "";
+          desktop.setTitle(
+            habits.length ? "Habit Garden · " + wateredToday + "/" + habits.length + " today" : "Habit Garden"
+          );
+        }
+
+        function add() {
+          const name = nameInput.value.trim();
+          if (!name) return;
+          habits.push({ id: Date.now().toString(36), name: name, days: [] });
+          nameInput.value = "";
+          save();
+          render();
+        }
+
+        document.getElementById("add").addEventListener("click", add);
+        nameInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") add();
+        });
+
+        desktop.onInit((init) => {
+          const saved = init.state && Array.isArray(init.state.habits) ? init.state.habits : [];
+          habits = saved
+            .filter((habit) => habit && typeof habit.name === "string" && Array.isArray(habit.days))
+            .map((habit) => ({
+              id: String(habit.id),
+              name: habit.name.slice(0, 40),
+              days: habit.days.filter((day) => typeof day === "string"),
+            }));
+          render();
+        });
+
+        render();
+      })();
+    </script>
+  </body>
+</html>

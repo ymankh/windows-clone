@@ -4,58 +4,35 @@
     <meta charset="UTF-8" />
     <title>Focus Timer</title>
     <!-- desktop-sdk -->
+    <!-- desktop-ui -->
     <style>
-      :root { --bg: #fff1f2; --text: #4c0519; --muted: #9f1239; --accent: #be123c; --track: #fecdd3; }
-      [data-theme="dark"] { --bg: #1c0a10; --text: #ffe4e6; --muted: #fda4af; --accent: #fb7185; --track: #4c0519; }
-      body.break { --accent: #047857; --track: #a7f3d0; --muted: #065f46; }
-      [data-theme="dark"] body.break { --accent: #34d399; --track: #064e3b; --muted: #6ee7b7; }
-      * { box-sizing: border-box; }
-      html, body { height: 100%; margin: 0; }
-      body {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 14px;
-        background: var(--bg);
-        color: var(--text);
-        font: 15px system-ui, -apple-system, "Segoe UI", sans-serif;
-      }
-      .mode { text-transform: uppercase; letter-spacing: 0.2em; font-size: 12px; color: var(--muted); }
+      body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+      /* Focus uses the theme's main colour, breaks use its second chart colour. */
+      body { --session: var(--primary); }
+      body.break { --session: var(--chart-2); }
       .ring { position: relative; width: 180px; height: 180px; }
       .ring svg { transform: rotate(-90deg); }
-      .time { position: absolute; inset: 0; display: grid; place-items: center; font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; }
-      .controls { display: flex; gap: 8px; }
-      button {
-        border: 0;
-        border-radius: 999px;
-        padding: 8px 18px;
-        background: var(--accent);
-        color: #fff;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      button.secondary { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
-      button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
-      .sessions { color: var(--muted); font-size: 13px; }
+      .ring .track { stroke: var(--muted); }
+      .ring .bar { stroke: var(--session); transition: stroke 0.2s; }
+      .time { position: absolute; inset: 0; display: grid; place-items: center; font-size: 40px; }
+      .mode { color: var(--session); }
     </style>
   </head>
   <body>
-    <div class="mode" id="mode">Focus</div>
+    <div class="mode ui-overline" id="mode">Focus</div>
     <div class="ring">
       <svg width="180" height="180" viewBox="0 0 180 180" aria-hidden="true">
-        <circle cx="90" cy="90" r="80" fill="none" stroke="var(--track)" stroke-width="10" />
-        <circle id="progress" cx="90" cy="90" r="80" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" />
+        <circle cx="90" cy="90" r="80" fill="none" class="track" stroke-width="10" />
+        <circle id="progress" cx="90" cy="90" r="80" fill="none" class="bar" stroke-width="10" stroke-linecap="round" />
       </svg>
-      <div class="time" id="time" role="timer" aria-live="off">25:00</div>
+      <div class="time ui-display" id="time" role="timer" aria-live="off">25:00</div>
     </div>
-    <div class="controls">
-      <button type="button" id="start">Start</button>
-      <button type="button" id="reset" class="secondary">Reset</button>
-      <button type="button" id="skip" class="secondary">Skip</button>
+    <div class="ui-row ui-gap-sm">
+      <button type="button" id="start" class="ui-button ui-button--primary ui-button--pill">Start</button>
+      <button type="button" id="reset" class="ui-button ui-button--pill">Reset</button>
+      <button type="button" id="skip" class="ui-button ui-button--pill">Skip</button>
     </div>
-    <div class="sessions" id="sessions" aria-live="polite">0 focus sessions completed</div>
+    <div class="ui-small ui-muted" id="sessions" aria-live="polite">0 focus sessions completed</div>
 
     <script>
       (function () {

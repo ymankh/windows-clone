@@ -1,0 +1,10 @@
+{
+  "id": "photo-filters",
+  "name": "Photo Filters",
+  "version": "1.0.0",
+  "author": "Desktop Store",
+  "description": "Try looks on your pictures: warm, vintage, black and white and more, or fine-tune each setting yourself. Opens image files.",
+  "category": "Photography",
+  "fileTypes": ["image"],
+  "minSize": { "width": 600, "height": 420 }
+}

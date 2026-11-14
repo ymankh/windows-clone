@@ -1,0 +1,9 @@
+{
+  "id": "task-board",
+  "name": "Task Board",
+  "version": "1.0.0",
+  "author": "Desktop Store",
+  "description": "A simple board with To do, Doing and Done columns. Add cards and drag them along as you make progress.",
+  "category": "Productivity",
+  "minSize": { "width": 560, "height": 380 }
+}

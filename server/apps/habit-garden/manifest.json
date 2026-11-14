@@ -1,0 +1,9 @@
+{
+  "id": "habit-garden",
+  "name": "Habit Garden",
+  "version": "1.0.0",
+  "author": "Desktop Store",
+  "description": "Grow a plant for every habit. Water it each day you keep the habit and watch your streak bloom.",
+  "category": "Lifestyle",
+  "minSize": { "width": 420, "height": 420 }
+}

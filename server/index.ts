@@ -8,10 +8,7 @@ const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.STORE_PORT ?? "4000");
 const host = process.env.STORE_HOST ?? "127.0.0.1";
 
-const catalog = loadCatalog(
-  path.join(serverDir, "apps"),
-  path.join(serverDir, "sdk", "desktop-sdk.js")
-);
+const catalog = loadCatalog(path.join(serverDir, "apps"), path.join(serverDir, "sdk"));
 const stats = createInstallStats(path.join(serverDir, "data", "installs.json"));
 
 createStoreServer({

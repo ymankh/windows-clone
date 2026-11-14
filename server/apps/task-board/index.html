@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Task Board</title>
+    <!-- desktop-sdk -->
+    <!-- desktop-ui -->
+    <style>
+      .add { display: flex; flex: 1; gap: 8px; }
+      .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 100%; }
+      .column { display: flex; flex-direction: column; gap: 8px; border-top: 3px solid var(--column-color); }
+      .column--over { outline: 2px dashed var(--ring); outline-offset: -2px; }
+      .cards { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 40px; }
+      .task { padding: 10px; cursor: grab; }
+      .task--dragging { opacity: 0.4; }
+      .task p { overflow-wrap: anywhere; }
+      .task--done p { text-decoration: line-through; color: var(--muted-foreground); }
+      .task .ui-row { margin-top: 6px; gap: 2px; }
+    </style>
+  </head>
+  <body class="ui-app">
+    <header class="ui-toolbar">
+      <div class="add">
+        <input class="ui-input" id="text" maxlength="140" placeholder="What needs doing?" aria-label="New task" />
+        <button type="button" class="ui-button ui-button--primary" id="add">Add task</button>
+      </div>
+    </header>
+
+    <main class="ui-content">
+      <div class="board" id="board"></div>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const COLUMNS = [
+          { id: "todo", title: "To do", color: "var(--chart-3)", empty: "Nothing waiting" },
+          { id: "doing", title: "Doing", color: "var(--chart-1)", empty: "Nothing in progress" },
+          { id: "done", title: "Done", color: "var(--chart-2)", empty: "Nothing finished yet" },
+        ];
+        const el = desktop.ui.el;
+        const board = document.getElementById("board");
+        const textInput = document.getElementById("text");
+        let cards = [];
+        let draggedId = null;
+
+        function save() {
+          desktop.saveState({ cards: cards });
+        }
+
+        function move(card, columnId) {
+          if (card.column === columnId) return;
+          // Re-append so a moved card lands at the bottom of its new column.
+          cards = cards.filter((entry) => entry !== card);
+          card.column = columnId;
+          cards.push(card);
+          save();
+          render();
+        }
+
+        function iconButton(label, text, onclick, disabled) {
+          return el("button", {
+            type: "button",
+            class: "ui-button ui-button--ghost ui-button--icon ui-button--sm",
+            "aria-label": label,
+            text: text,
+            disabled: disabled,
+            onclick: onclick,
+          });
+        }
+
+        function renderCard(card, columnIndex) {
+          const previous = COLUMNS[columnIndex - 1];
+          const next = COLUMNS[columnIndex + 1];
+          return el(
+            "article",
+            {
+              class: "ui-card ui-card--flat task" + (card.column === "done" ? " task--done" : ""),
+              draggable: "true",
+              ondragstart: (event) => {
+                draggedId = card.id;
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", card.text);
+                event.currentTarget.classList.add("task--dragging");
+              },
+              ondragend: (event) => {
+                draggedId = null;
+                event.currentTarget.classList.remove("task--dragging");
+              },
+            },
+            [
+              el("p", { text: card.text }),
+              el("div", { class: "ui-row" }, [
+                iconButton("Move “" + card.text + "” back", "←", () => move(card, previous.id), !previous),
+                iconButton("Move “" + card.text + "” forward", "→", () => move(card, next.id), !next),
+                el("span", { class: "ui-spacer" }),
+                iconButton("Delete “" + card.text + "”", "✕", () => {
+                  cards = cards.filter((entry) => entry !== card);
+                  save();
+                  render();
+                }),
+              ]),
+            ]
+          );
+        }
+
+        function render() {
+          board.replaceChildren();
+          COLUMNS.forEach((column, columnIndex) => {
+            const own = cards.filter((card) => card.column === column.id);
+            const section = el(
+              "section",
+              {
+                class: "ui-card ui-card--muted column",
+                style: "--column-color:" + column.color,
+                "aria-label": column.title,
+                ondragover: (event) => {
+                  if (!draggedId) return;
+                  event.preventDefault();
+                  section.classList.add("column--over");
+                },
+                ondragleave: () => section.classList.remove("column--over"),
+                ondrop: (event) => {
+                  event.preventDefault();
+                  const card = cards.find((entry) => entry.id === draggedId);
+                  if (card) move(card, column.id);
+                  section.classList.remove("column--over");
+                },
+              },
+              [
+                el("div", { class: "ui-row ui-gap-sm" }, [
+                  el("h2", { class: "ui-heading", text: column.title }),
+                  el("span", { class: "ui-badge", text: String(own.length) }),
+                ]),
+                el(
+                  "div",
+                  { class: "cards" },
+                  own.length
+                    ? own.map((card) => renderCard(card, columnIndex))
+                    : el("p", { class: "ui-small ui-muted", text: column.empty })
+                ),
+              ]
+            );
+            board.appendChild(section);
+          });
+
+          const open = cards.filter((card) => card.column !== "done").length;
+          desktop.setTitle(open ? "Task Board · " + open + " open" : "Task Board");
+        }
+
+        function add() {
+          const text = textInput.value.trim();
+          if (!text) return;
+          cards.push({
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            text: text,
+            column: "todo",
+          });
+          textInput.value = "";
+          save();
+          render();
+        }
+
+        document.getElementById("add").addEventListener("click", add);
+        textInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") add();
+        });
+
+        desktop.onInit((init) => {
+          const saved = init.state && Array.isArray(init.state.cards) ? init.state.cards : [];
+          cards = saved
+            .filter((card) => card && typeof card.text === "string")
+            .map((card) => ({
+              id: String(card.id),
+              text: card.text.slice(0, 140),
+              column: COLUMNS.some((column) => column.id === card.column) ? card.column : "todo",
+            }));
+          render();
+        });
+
+        render();
+      })();
+    </script>
+  </body>
+</html>

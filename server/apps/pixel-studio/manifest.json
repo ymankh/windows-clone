@@ -1,0 +1,9 @@
+{
+  "id": "pixel-studio",
+  "name": "Pixel Studio",
+  "version": "1.0.0",
+  "author": "Desktop Store",
+  "description": "Draw chunky pixel art on a 16 by 16 canvas. Paint, fill, mirror your strokes and save the picture.",
+  "category": "Creativity",
+  "minSize": { "width": 420, "height": 500 }
+}

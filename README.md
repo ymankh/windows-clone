@@ -27,8 +27,10 @@ Included apps:
 
 ```bash
 npm install
-npm run dev           # local dev server
-npm run store:server  # App Store backend on http://127.0.0.1:4000 (run alongside dev)
+npm run dev           # dev server + App Store backend (http://127.0.0.1:4000) together
+npm run dev:web       # only the dev server
+npm run store:dev     # only the App Store backend, restarting on changes
+npm run store:server  # only the App Store backend, without restarting on changes
 npm run build         # production build
 npm run preview       # serve the build output
 ```
@@ -78,7 +80,7 @@ Create a folder in `server/apps/<id>/` with three files and restart the server:
   }
   ```
   The `id` must match the folder name. `fileTypes` can include `notes`, `pdf`, `image`, `audio`, `archive` or `binary`.
-- `index.html`: a single self-contained page (inline CSS and JS). Put `<!-- desktop-sdk -->` in the `<head>` where the SDK should be injected.
+- `index.html`: a single self-contained page (inline CSS and JS). Put `<!-- desktop-sdk -->` in the `<head>` where the SDK should be injected, followed by `<!-- desktop-ui -->` to get the shared UI library (see below).
 - `icon.svg`: the app icon.
 
 Invalid apps are skipped with a warning, so one bad folder can't take the store down. Bump `version` to offer an **Update** button to users who already installed the app.
@@ -89,13 +91,83 @@ Injected into every app as `window.desktop`:
 
 | Call | Purpose |
 | --- | --- |
-| `desktop.onInit(fn)` | Receives `{ windowId, file, state, theme }`. `file` is `{ name, type, text }` for notes (Markdown) or `{ name, type, url }` for other files. `state` is what the app last saved for this window. |
-| `desktop.onThemeChange(fn)` | Called with `"light"` or `"dark"`. The SDK also sets `data-theme` on `<html>`. |
+| `desktop.onInit(fn)` | Receives `{ windowId, file, state, theme, tokens }`. `file` is `{ name, type, text }` for notes (Markdown) or `{ name, type, url }` for other files. `state` is what the app last saved for this window. `tokens` is the desktop theme (see below). |
+| `desktop.onThemeChange(fn)` | Called with `"light"` or `"dark"` and the new `tokens` when the user switches mode or theme. The SDK applies both by itself, so most apps never need this. |
 | `desktop.setTitle(text)` | Changes the window title. |
 | `desktop.saveState(value)` | Persists JSON-serialisable state for this window (up to about 1 MB). |
 | `desktop.download(name, content, mimeType)` | Saves a text file to the user's computer. |
 
-The example apps are **Markdown Pad** (an alternative Notes opener), **Calculator** and **Focus Timer**.
+### Shared UI library
+
+Store apps share one UI library so they look alike and follow the desktop theme. It lives in `server/sdk/desktop-ui.css` (components) and `server/sdk/desktop-ui.js` (helpers), and is injected into every app that has `<!-- desktop-ui -->` in its `<head>`. Changing the library restyles every app the next time it is installed or updated.
+
+**Theming.** The desktop sends its current theme to each app as tokens, and the SDK turns them into CSS variables on `<html>`: `--background`, `--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive` (each with a matching `-foreground`), `--border`, `--input`, `--ring`, `--chart-1` to `--chart-5`, `--radius`, `--font-sans` and `--font-mono`. The list is `THEME_TOKEN_NAMES` in `src/apps/store/protocol.ts`. Apps update live when the user picks another theme or toggles dark mode. Style your own parts with these variables and never hard-code interface colours.
+
+A minimal app:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>My App</title>
+    <!-- desktop-sdk -->
+    <!-- desktop-ui -->
+    <style>
+      /* Only what is special about this app, using the theme variables. */
+      .highlight { color: var(--primary); }
+    </style>
+  </head>
+  <body class="ui-app">
+    <header class="ui-toolbar">
+      <h1 class="ui-title">My App</h1>
+      <span class="ui-spacer"></span>
+      <button class="ui-button ui-button--primary" id="save">Save</button>
+    </header>
+    <main class="ui-content">
+      <div class="ui-card">Hello</div>
+    </main>
+    <script>
+      document.getElementById("save").addEventListener("click", () => desktop.ui.toast("Saved"));
+    </script>
+  </body>
+</html>
+```
+
+| Group | Classes |
+| --- | --- |
+| Layout | `ui-app` (on `<body>`), `ui-toolbar`, `ui-content` (`--flush`, `--center`), `ui-footer`, `ui-row`, `ui-stack`, `ui-grid`, `ui-spacer`, `ui-gap-sm`, `ui-gap-lg` |
+| Text | `ui-title`, `ui-heading`, `ui-overline`, `ui-display`, `ui-muted`, `ui-small`, `ui-mono`, `ui-truncate`, `ui-kbd` |
+| Buttons | `ui-button` with `--primary`, `--secondary`, `--danger`, `--ghost`, `--sm`, `--lg`, `--icon`, `--pill`, `--block`. `aria-pressed="true"` shows a toggled button. |
+| Forms | `ui-field`, `ui-label`, `ui-input`, `ui-select`, `ui-textarea`, `ui-check`, `ui-switch`, `ui-range` |
+| Surfaces | `ui-card` (`--flat`, `--muted`), `ui-divider`, `ui-badge` (`--primary`, `--accent`, `--danger`), `ui-stat` |
+| Lists and tabs | `ui-list` (`--divided`), `ui-list__item` (`--interactive`), `ui-tabs`, `ui-tab` |
+| Feedback | `ui-progress`, `ui-empty`, `ui-notice` (`--danger`) |
+
+| Helper | Purpose |
+| --- | --- |
+| `desktop.ui.el(tag, props, children)` | Builds an element without `innerHTML`. `props` takes `class`, `text`, `on<event>` handlers, `dataset` and attributes. |
+| `desktop.ui.toast(text)` | Shows a short message at the bottom of the window. |
+| `desktop.ui.confirm(text, { confirmLabel, cancelLabel, danger })` | Asks before a destructive action and resolves to `true` or `false`. Use it instead of `confirm()`, which is blocked inside apps. |
+
+Apps cannot submit forms either, so use buttons with click handlers instead of `<form>` and `type="submit"`.
+
+The apps in the store, all built on the library:
+
+| App | What it does |
+| --- | --- |
+| Markdown Pad | Markdown editor with live preview. Opens notes. |
+| Text Insights | Word count, reading time and most used words. Opens notes. |
+| Photo Filters | Looks and fine-tuning sliders for pictures. Opens images. |
+| Pixel Studio | 16 by 16 pixel art with fill, mirror and saving. |
+| Palette Lab | Builds a colour palette from one colour. |
+| Task Board | To do, Doing and Done columns with drag and drop. |
+| Habit Garden | A plant per habit that grows with your streak. |
+| Memory Match | Find the pairs in as few moves as possible. |
+| Focus Timer | Work and break timer. |
+| Calculator | Calculator with keyboard support. |
+
+Text shown to users in an app follows the same rule as the rest of the desktop: plain language, no technical terms (see `AGENTS.md`).
 
 ### Store API
 

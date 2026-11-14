@@ -11,7 +11,7 @@ import {
 } from "@/apps/store/protocol";
 
 const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../server");
-const catalog = loadCatalog(path.join(serverDir, "apps"), path.join(serverDir, "sdk", "desktop-sdk.js"));
+const catalog = loadCatalog(path.join(serverDir, "apps"), path.join(serverDir, "sdk"));
 
 let stats: InstallStats;
 const route = (method: string, url: string) => routeStoreRequest({ catalog, stats }, method, url);
@@ -23,18 +23,40 @@ beforeEach(() => {
 
 describe("catalog loading", () => {
   it("loads every example app", () => {
-    expect([...catalog.keys()].sort()).toEqual(["calculator", "focus-timer", "markdown-pad"]);
+    expect([...catalog.keys()].sort()).toEqual([
+      "calculator",
+      "focus-timer",
+      "habit-garden",
+      "markdown-pad",
+      "memory-match",
+      "palette-lab",
+      "photo-filters",
+      "pixel-studio",
+      "task-board",
+      "text-insights",
+    ]);
   });
 
   it("injects the desktop SDK into each app", () => {
     for (const app of catalog.values()) {
-      expect(app.html).toContain("window.desktop =");
+      expect(app.html).toContain("desktop.onInit");
       expect(app.html).not.toContain("<!-- desktop-sdk -->");
     }
   });
 
-  it("registers Markdown Pad as a notes opener", () => {
+  it("injects the shared UI library into each app that asks for it", () => {
+    for (const app of catalog.values()) {
+      expect(app.html).toContain(".ui-button");
+      expect(app.html).toContain("window.desktop.ui =");
+      expect(app.html).not.toContain("<!-- desktop-ui -->");
+      expect(() => storeAppPackageSchema.parse({ manifest: app.manifest, html: app.html, icon: app.icon })).not.toThrow();
+    }
+  });
+
+  it("registers the apps that open files", () => {
     expect(catalog.get("markdown-pad")?.manifest.fileTypes).toEqual(["notes"]);
+    expect(catalog.get("text-insights")?.manifest.fileTypes).toEqual(["notes"]);
+    expect(catalog.get("photo-filters")?.manifest.fileTypes).toEqual(["image"]);
   });
 });
 

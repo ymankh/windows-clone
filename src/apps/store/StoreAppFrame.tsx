@@ -12,6 +12,7 @@ import {
   type HostInitPayload,
 } from "./protocol";
 import { loadStoreAppState, saveStoreAppState } from "./storeAppState";
+import { readThemeTokens } from "./themeTokens";
 
 type StoreAppFrameProps = AppWindowComponentProps & {
   appId: string;
@@ -50,6 +51,7 @@ const StoreAppFrame = ({ appId, windowId = appId, fileContext }: StoreAppFramePr
     state.apps.find((app) => toStoreAppId(app.manifest.id) === appId)
   );
   const mode = useThemeStore((state) => state.mode);
+  const themeId = useThemeStore((state) => state.themeId);
   const setWindowTitle = useWindowsManagerStore((state) => state.setWindowTitle);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const lastDownloadRef = useRef(0);
@@ -72,6 +74,7 @@ const StoreAppFrame = ({ appId, windowId = appId, fileContext }: StoreAppFramePr
       file: toPortableFile(fileContext),
       state: loadStoreAppState(appId, windowId),
       theme: mode,
+      tokens: readThemeTokens(),
     };
     post({ type: "init", payload });
   };
@@ -88,7 +91,7 @@ const StoreAppFrame = ({ appId, windowId = appId, fileContext }: StoreAppFramePr
         setNotice(
           saveStoreAppState(appId, windowId, message.state)
             ? null
-            : "This app's data could not be saved in browser storage."
+            : "This app's data couldn't be saved. Your storage space may be full."
         );
         break;
       case "download": {
@@ -123,12 +126,13 @@ const StoreAppFrame = ({ appId, windowId = appId, fileContext }: StoreAppFramePr
     return () => window.removeEventListener("message", listener);
   }, []);
 
+  // Runs after the new theme is on the page, so the tokens read are current.
   useEffect(() => {
     iframeRef.current?.contentWindow?.postMessage(
-      { source: HOST_MESSAGE_SOURCE, type: "theme", theme: mode },
+      { source: HOST_MESSAGE_SOURCE, type: "theme", theme: mode, tokens: readThemeTokens() },
       "*"
     );
-  }, [mode]);
+  }, [mode, themeId]);
 
   if (!installed) {
     return (

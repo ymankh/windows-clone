@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Pixel Studio</title>
+    <!-- desktop-sdk -->
+    <!-- desktop-ui -->
+    <style>
+      .canvas {
+        display: grid;
+        grid-template-columns: repeat(16, 1fr);
+        width: min(100%, calc(100vh - 150px));
+        aspect-ratio: 1;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        /* Checkerboard shows which squares are still empty. */
+        background: repeating-conic-gradient(var(--muted) 0% 25%, var(--card) 0% 50%) 0 0 / 12.5% 12.5%;
+        cursor: crosshair;
+        touch-action: none;
+      }
+      .cell { box-shadow: inset 0 0 0 0.5px color-mix(in oklab, var(--foreground) 10%, transparent); }
+      .palette { display: flex; flex-wrap: wrap; gap: 6px; }
+      .swatch {
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border: 2px solid var(--card);
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px var(--border);
+        cursor: pointer;
+      }
+      .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ring); transform: scale(1.1); }
+    </style>
+  </head>
+  <body class="ui-app">
+    <header class="ui-toolbar">
+      <div class="ui-tabs" role="group" aria-label="Tool">
+        <button type="button" class="ui-tab" data-tool="draw" aria-pressed="true">Draw</button>
+        <button type="button" class="ui-tab" data-tool="fill" aria-pressed="false">Fill</button>
+        <button type="button" class="ui-tab" data-tool="erase" aria-pressed="false">Erase</button>
+      </div>
+      <label class="ui-switch"><input type="checkbox" id="mirror" /> Mirror</label>
+      <span class="ui-spacer"></span>
+      <button type="button" class="ui-button ui-button--sm" id="clear">Clear</button>
+      <button type="button" class="ui-button ui-button--sm ui-button--primary" id="save">Save picture</button>
+    </header>
+
+    <main class="ui-content ui-content--center">
+      <div class="canvas" id="canvas" role="img" aria-label="Drawing canvas"></div>
+    </main>
+
+    <footer class="ui-footer">
+      <div class="palette" id="palette" role="group" aria-label="Colour"></div>
+    </footer>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const SIZE = 16;
+        // Paint colours are part of the picture, so they stay the same in every theme.
+        const COLORS = [
+          "#1f2937", "#ffffff", "#ef4444", "#f97316", "#facc15", "#22c55e",
+          "#14b8a6", "#3b82f6", "#6366f1", "#a855f7", "#ec4899", "#92400e",
+        ];
+        const el = desktop.ui.el;
+        const canvas = document.getElementById("canvas");
+        const mirror = document.getElementById("mirror");
+
+        let cells = new Array(SIZE * SIZE).fill(-1);
+        let color = 2;
+        let tool = "draw";
+        let painting = false;
+        let saveTimer = null;
+
+        const cellEls = cells.map((_, index) => {
+          const cell = el("div", { class: "cell", dataset: { index: String(index) } });
+          canvas.appendChild(cell);
+          return cell;
+        });
+
+        const swatches = COLORS.map((value, index) => {
+          const swatch = el("button", {
+            type: "button",
+            class: "swatch",
+            style: "background:" + value,
+            "aria-label": "Colour " + (index + 1),
+            onclick: () => {
+              color = index;
+              if (tool === "erase") setTool("draw");
+              renderPalette();
+            },
+          });
+          document.getElementById("palette").appendChild(swatch);
+          return swatch;
+        });
+
+        function renderPalette() {
+          swatches.forEach((swatch, index) => swatch.setAttribute("aria-pressed", String(index === color)));
+        }
+
+        function renderCells() {
+          cellEls.forEach((cell, index) => {
+            cell.style.background = cells[index] < 0 ? "" : COLORS[cells[index]];
+          });
+        }
+
+        function setTool(next) {
+          tool = next;
+          document.querySelectorAll("[data-tool]").forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.tool === tool));
+          });
+        }
+
+        function scheduleSave() {
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(() => desktop.saveState({ cells: cells, color: color }), 300);
+        }
+
+        function setCell(index, value) {
+          cells[index] = value;
+          if (mirror.checked) {
+            const x = index % SIZE;
+            cells[index - x + (SIZE - 1 - x)] = value;
+          }
+        }
+
+        function fill(start, value) {
+          const target = cells[start];
+          if (target === value) return;
+          const queue = [start];
+          while (queue.length) {
+            const index = queue.pop();
+            if (cells[index] !== target) continue;
+            cells[index] = value;
+            const x = index % SIZE;
+            if (x > 0) queue.push(index - 1);
+            if (x < SIZE - 1) queue.push(index + 1);
+            if (index >= SIZE) queue.push(index - SIZE);
+            if (index < SIZE * (SIZE - 1)) queue.push(index + SIZE);
+          }
+        }
+
+        function paintAt(event) {
+          const target = document.elementFromPoint(event.clientX, event.clientY);
+          if (!target || !target.classList.contains("cell")) return;
+          const index = Number(target.dataset.index);
+          if (tool === "fill") fill(index, color);
+          else setCell(index, tool === "erase" ? -1 : color);
+          renderCells();
+          scheduleSave();
+        }
+
+        canvas.addEventListener("pointerdown", (event) => {
+          painting = tool !== "fill";
+          paintAt(event);
+        });
+        canvas.addEventListener("pointermove", (event) => {
+          if (painting) paintAt(event);
+        });
+        window.addEventListener("pointerup", () => {
+          painting = false;
+        });
+
+        document.querySelectorAll("[data-tool]").forEach((button) => {
+          button.addEventListener("click", () => setTool(button.dataset.tool));
+        });
+
+        document.getElementById("clear").addEventListener("click", () => {
+          if (cells.every((value) => value < 0)) return;
+          desktop.ui
+            .confirm("Clear the whole picture?", { confirmLabel: "Clear", danger: true })
+            .then((confirmed) => {
+              if (!confirmed) return;
+              cells.fill(-1);
+              renderCells();
+              scheduleSave();
+            });
+        });
+
+        document.getElementById("save").addEventListener("click", () => {
+          const rects = cells
+            .map((value, index) =>
+              value < 0
+                ? ""
+                : '<rect x="' + (index % SIZE) + '" y="' + Math.floor(index / SIZE) +
+                  '" width="1" height="1" fill="' + COLORS[value] + '"/>'
+            )
+            .join("");
+          const svg =
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + SIZE + " " + SIZE +
+            '" width="512" height="512" shape-rendering="crispEdges">' + rects + "</svg>";
+          desktop.download("pixel-art.svg", svg, "image/svg+xml");
+          desktop.ui.toast("Picture saved");
+        });
+
+        desktop.onInit((init) => {
+          const saved = init.state;
+          if (saved && Array.isArray(saved.cells) && saved.cells.length === cells.length) {
+            cells = saved.cells.map((value) =>
+              Number.isInteger(value) && value >= 0 && value < COLORS.length ? value : -1
+            );
+          }
+          if (saved && Number.isInteger(saved.color) && COLORS[saved.color]) color = saved.color;
+          renderCells();
+          renderPalette();
+        });
+
+        renderPalette();
+      })();
+    </script>
+  </body>
+</html>

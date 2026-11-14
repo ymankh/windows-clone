@@ -66,6 +66,44 @@ export const HOST_MESSAGE_SOURCE = "desktop-host";
 
 export type ThemeModeName = "light" | "dark";
 
+/**
+ * The desktop theme values shared with store apps. Each one reaches the app
+ * as a CSS variable of the same name (`--primary`, ...), which is what the
+ * shared UI library (`server/sdk/desktop-ui.css`) is built on.
+ */
+export const THEME_TOKEN_NAMES = [
+  "background",
+  "foreground",
+  "card",
+  "card-foreground",
+  "popover",
+  "popover-foreground",
+  "primary",
+  "primary-foreground",
+  "secondary",
+  "secondary-foreground",
+  "muted",
+  "muted-foreground",
+  "accent",
+  "accent-foreground",
+  "destructive",
+  "destructive-foreground",
+  "border",
+  "input",
+  "ring",
+  "chart-1",
+  "chart-2",
+  "chart-3",
+  "chart-4",
+  "chart-5",
+  "radius",
+  "font-sans",
+  "font-mono",
+] as const;
+
+export type ThemeTokenName = (typeof THEME_TOKEN_NAMES)[number];
+export type ThemeTokens = Partial<Record<ThemeTokenName, string>>;
+
 /** A file handed to a store app, converted to a form any app can use. */
 export type PortableFile = {
   name: string;
@@ -82,6 +120,8 @@ export type HostInitPayload = {
   /** Whatever the app last passed to saveState for this window, or null. */
   state: unknown;
   theme: ThemeModeName;
+  /** The current desktop theme, so the app can match it. */
+  tokens: ThemeTokens;
 };
 
 const appMessageBase = { source: z.literal(APP_MESSAGE_SOURCE) };

@@ -338,7 +338,23 @@ export const testRegistry: TestDefinition[] = [
     title: "Explain an unreachable store server",
     status: "implemented",
     spec: "tests/playwright/specs/store.spec.ts",
-    details: "Verify the store shows how to start the server when it cannot connect.",
+    details: "Verify the store shows a plain-language message, without technical details, when it cannot connect.",
+  },
+  {
+    id: "store.ui-theme",
+    feature: "App Store",
+    title: "Store apps follow the desktop theme",
+    status: "implemented",
+    spec: "tests/playwright/specs/store.spec.ts",
+    details: "Verify an app built on the shared UI library gets the desktop theme and updates when it changes.",
+  },
+  {
+    id: "store.apps.smoke",
+    feature: "App Store",
+    title: "Every store app installs and works",
+    status: "implemented",
+    spec: "tests/playwright/specs/store.spec.ts",
+    details: "Install and open every app in the catalog, use one feature of each, and verify nothing breaks.",
   },
 ];
 

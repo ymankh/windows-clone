@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Memory Match</title>
+    <!-- desktop-sdk -->
+    <!-- desktop-ui -->
+    <style>
+      .board {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        width: min(100%, calc(100vh - 130px));
+        aspect-ratio: 1;
+      }
+      .tile {
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: var(--ui-radius-lg);
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-size: clamp(20px, 7vmin, 40px);
+        cursor: pointer;
+        transition: transform 0.2s, background-color 0.2s;
+      }
+      .tile:not(.tile--up):hover { transform: scale(1.03); }
+      .tile--up { background: var(--card); border-color: var(--border); transform: rotateY(180deg); }
+      .tile--up span { transform: rotateY(180deg); }
+      .tile--matched { background: var(--accent); border-color: transparent; cursor: default; }
+    </style>
+  </head>
+  <body class="ui-app">
+    <header class="ui-toolbar">
+      <div class="ui-stat">
+        <span class="ui-stat__value" id="moves">0</span>
+        <span class="ui-stat__label">Moves</span>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-stat__value" id="best">–</span>
+        <span class="ui-stat__label">Best</span>
+      </div>
+      <span class="ui-spacer"></span>
+      <button type="button" class="ui-button ui-button--primary" id="new-game">New game</button>
+    </header>
+
+    <main class="ui-content ui-content--center">
+      <div class="board" id="board"></div>
+    </main>
+
+    <footer class="ui-footer" id="status" aria-live="polite">Find all eight pairs.</footer>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const FACES = [
+          ["🦊", "fox"], ["🐙", "octopus"], ["🌵", "cactus"], ["🍉", "watermelon"],
+          ["🚀", "rocket"], ["🎈", "balloon"], ["🌙", "moon"], ["🍩", "doughnut"],
+        ];
+        const el = desktop.ui.el;
+        const board = document.getElementById("board");
+        const status = document.getElementById("status");
+        let tiles = [];
+        let open = [];
+        let moves = 0;
+        let best = null;
+        let locked = false;
+
+        function shuffle(list) {
+          for (let index = list.length - 1; index > 0; index -= 1) {
+            const other = Math.floor(Math.random() * (index + 1));
+            const held = list[index];
+            list[index] = list[other];
+            list[other] = held;
+          }
+          return list;
+        }
+
+        function render() {
+          tiles.forEach((tile, index) => {
+            const up = tile.matched || open.includes(tile);
+            tile.button.className = "tile" + (up ? " tile--up" : "") + (tile.matched ? " tile--matched" : "");
+            tile.button.firstChild.textContent = up ? tile.face[0] : "?";
+            tile.button.disabled = tile.matched;
+            tile.button.setAttribute(
+              "aria-label",
+              "Card " + (index + 1) + (up ? ": " + tile.face[1] : ", face down")
+            );
+          });
+          document.getElementById("moves").textContent = String(moves);
+          document.getElementById("best").textContent = best === null ? "–" : String(best);
+        }
+
+        function finish() {
+          const record = best === null || moves < best;
+          if (record) {
+            best = moves;
+            desktop.saveState({ best: best });
+          }
+          status.textContent = record
+            ? "New best score: " + moves + " moves!"
+            : "All pairs found in " + moves + " moves. Your best is " + best + ".";
+          desktop.ui.toast(record ? "New best score 🎉" : "Well done!");
+        }
+
+        function flip(tile) {
+          if (locked || tile.matched || open.includes(tile)) return;
+          open.push(tile);
+          if (open.length === 2) {
+            moves += 1;
+            if (open[0].face === open[1].face) {
+              open[0].matched = open[1].matched = true;
+              open = [];
+              if (tiles.every((entry) => entry.matched)) finish();
+            } else {
+              locked = true;
+              setTimeout(() => {
+                open = [];
+                locked = false;
+                render();
+              }, 800);
+            }
+          }
+          render();
+        }
+
+        function newGame() {
+          open = [];
+          moves = 0;
+          locked = false;
+          status.textContent = "Find all eight pairs.";
+          board.replaceChildren();
+          tiles = shuffle(FACES.concat(FACES)).map((face) => {
+            const tile = { face: face, matched: false, button: null };
+            tile.button = el("button", { type: "button", onclick: () => flip(tile) }, el("span"));
+            board.appendChild(tile.button);
+            return tile;
+          });
+          render();
+        }
+
+        document.getElementById("new-game").addEventListener("click", newGame);
+
+        desktop.onInit((init) => {
+          if (init.state && Number.isInteger(init.state.best) && init.state.best > 0) {
+            best = init.state.best;
+            render();
+          }
+        });
+
+        newGame();
+      })();
+    </script>
+  </body>
+</html>

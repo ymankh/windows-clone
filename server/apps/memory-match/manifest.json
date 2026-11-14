@@ -1,0 +1,9 @@
+{
+  "id": "memory-match",
+  "name": "Memory Match",
+  "version": "1.0.0",
+  "author": "Desktop Store",
+  "description": "Flip the cards and find all eight pairs in as few moves as you can. Keeps your best score.",
+  "category": "Games",
+  "minSize": { "width": 360, "height": 460 }
+}

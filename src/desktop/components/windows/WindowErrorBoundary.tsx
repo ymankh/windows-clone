@@ -37,7 +37,7 @@ class WindowErrorBoundary extends Component<
       >
         <p className="font-semibold">{this.props.title} stopped working.</p>
         <p className="max-w-sm text-muted-foreground">
-          {this.state.error.message || "An unexpected error occurred."}
+          Something went wrong. Please try again.
         </p>
         <button
           type="button"

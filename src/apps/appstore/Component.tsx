@@ -6,11 +6,11 @@ import useWindowsManagerStore from "@/desktop/stores/WindowsStore";
 import { getAppById } from "../registry";
 import { buildAppWindow } from "../windowBuilder";
 import type { FileType } from "../fileTypes";
-import { resolveStoreUrl, STORE_API_URL } from "../store/config";
+import { resolveStoreUrl } from "../store/config";
 import useInstalledAppsStore, { type InstalledStoreApp } from "../store/installedAppsStore";
 import { installStoreApp, uninstallStoreApp } from "../store/lifecycle";
 import { toStoreAppId, type StoreCatalogEntry } from "../store/protocol";
-import { fetchAppPackage, fetchCatalog, recordInstall, StoreApiError } from "./api";
+import { fetchAppPackage, fetchCatalog, recordInstall, toUserMessage } from "./api";
 
 const FILE_TYPE_LABELS: Record<FileType, string> = {
   notes: "Notes",
@@ -93,9 +93,10 @@ const AppStoreComponent = () => {
       .then((apps) => setCatalog({ status: "ready", apps }))
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
+        console.error("[App Store] Failed to load the catalog:", error);
         setCatalog({
           status: "error",
-          message: error instanceof StoreApiError ? error.message : "The catalog could not be loaded.",
+          message: toUserMessage(error, "catalog"),
         });
       });
     return () => controller.abort();
@@ -138,7 +139,10 @@ const AppStoreComponent = () => {
     try {
       const pkg = await fetchAppPackage(listing.id);
       if (!installStoreApp(pkg)) {
-        setAppError(listing.id, "Not enough browser storage to install this app.");
+        setAppError(
+          listing.id,
+          "There isn't enough storage space to install this app. Try uninstalling apps you no longer use."
+        );
         return;
       }
       const installs = await recordInstall(listing.id);
@@ -146,9 +150,10 @@ const AppStoreComponent = () => {
         setInstallCounts((current) => ({ ...current, [listing.id]: installs }));
       }
     } catch (error) {
+      console.error(`[App Store] Failed to install "${listing.id}":`, error);
       setAppError(
         listing.id,
-        error instanceof StoreApiError ? error.message : "The app could not be installed."
+        toUserMessage(error, "install")
       );
     } finally {
       setAppBusy(listing.id, null);
@@ -172,7 +177,7 @@ const AppStoreComponent = () => {
         <div>
           <h2 className="text-base font-semibold">App Store</h2>
           <p className="text-xs text-muted-foreground">
-            {installed.length} installed · served by {STORE_API_URL}
+            {installed.length} installed
           </p>
         </div>
         <label className="ml-auto flex min-w-48 flex-1 items-center gap-2 rounded-md border border-border bg-background px-3 sm:max-w-72">
@@ -197,7 +202,7 @@ const AppStoreComponent = () => {
         {catalog.status === "error" ? (
           <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
             <span className="text-destructive">
-              {catalog.message} Start it with <code className="font-mono">npm run store:server</code>.
+              {catalog.message}
               {installed.length ? " Your installed apps still work." : ""}
             </span>
             <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={retry}>

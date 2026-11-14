@@ -56,7 +56,7 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
     if (persistNote(windowId, pending)) {
       setFileError(null);
     } else {
-      setFileError("This note could not be saved in browser storage.");
+      setFileError("This note couldn't be saved. Your storage space may be full.");
     }
   }, [windowId]);
 
@@ -104,7 +104,8 @@ const NotesComponent = ({ windowId = "notes", fileContext }: AppWindowComponentP
             setEditorRevision((value) => value + 1);
             setFileError(null);
           } catch (error) {
-            setFileError(error instanceof Error ? error.message : "The note could not be opened.");
+            console.error(`[Notes] Failed to open "${file.name}":`, error);
+            setFileError("This file isn't a valid note, so it couldn't be opened.");
           }
         });
       }
